@@ -1,6 +1,5 @@
 {
   "probing-interval": 60,
-  "probing-priority": 10,
 
   "monitor-processes":  true,
   "monitor-pulseaudio": true,

@@ -1,13 +1,13 @@
 (ns moccafaux.core
   (:require [clojure.data.json :as json]
             [clojure.java.shell :as shell]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [chime.core :as chime])
   (:gen-class))
 
 
 (def default-settings
   {:probing-interval 60,
-   :probing-priority 10,
 
    :monitor-processes  true,
    :monitor-pulseaudio false,
@@ -67,7 +67,8 @@
 
 (defn -main
   [& _]
-  (println (update-status))
-  ;; finish threads in pool (see https://stackoverflow.com/a/33357417)
-  ;; and https://clojuredocs.org/clojure.java.shell/sh)
-  (shutdown-agents))
+  (chime/chime-at (->> (settings :probing-interval)
+                       (java.time.Duration/ofSeconds)
+                       (chime/periodic-seq (java.time.Instant/now)))
+                  (fn [_]
+                    (println (update-status)))))
