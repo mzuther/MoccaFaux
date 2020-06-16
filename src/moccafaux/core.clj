@@ -46,15 +46,23 @@
 
 
 (defn update-status []
-  {:processes  (shell-exec-success?
-                (settings :monitor-processes-cmd)
-                :monitor-processes)
-   :pulseaudio (shell-exec-success?
-                "pactl list short sinks | grep -E '\\bRUNNING$'"
-                :monitor-pulseaudio)
-   :zfs-scrub  (shell-exec-success?
-                "zpool status | grep -E '(resilver|scrub) in progress'"
-                :monitor-zfs-scrub)})
+  (let [processes?  (shell-exec-success?
+                     (settings :monitor-processes-cmd)
+                     :monitor-processes)
+        pulseaudio? (shell-exec-success?
+                     "pactl list short sinks | grep -E '\\bRUNNING$'"
+                     :monitor-pulseaudio)
+        zfs-scrub?  (shell-exec-success?
+                     "zpool status | grep -E '(resilver|scrub) in progress'"
+                     :monitor-zfs-scrub)
+        new-status  {:processes        processes?
+                     :pulseaudio       pulseaudio?
+                     :zfs-scrub        zfs-scrub?
+                     :dpms-disabled    (boolean pulseaudio?)
+                     :suspend-disabled (boolean (or processes?
+                                                    pulseaudio?
+                                                    zfs-scrub?))}]
+    new-status))
 
 
 (defn -main
