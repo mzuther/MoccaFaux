@@ -1,0 +1,24 @@
+{
+  "probing-interval": 60,
+  "probing-priority": 10,
+
+  "monitor-processes":  true,
+  "monitor-pulseaudio": true,
+  "monitor-zfs-scrub":  true,
+
+  "monitor-processes-regex": [
+    "^dpkg\\b",
+    "^pacman\\b",
+
+    "^dar\\s",
+    "^/\\S*rsync\\b",
+    "^ssh\\s",
+    "^unison\\S*"
+  ],
+
+  "dpms-enable":  "xset dpms 600 900 1200",
+  "dpms-disable": "xset -dpms",
+
+  "suspend-enable":  "xautolock -time 15 -locker 'systemctl suspend' -detectsleep",
+  "suspend-disable": "xautolock -exit"
+}
