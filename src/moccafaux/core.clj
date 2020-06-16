@@ -23,18 +23,18 @@
 
 
 (def settings
-  (let [file-name     "moccafaux.json"
-        user-settings (try (json/read-str (slurp file-name)
-                                          :key-fn keyword)
-                           (catch Exception _
-                             (printf (format "Warning: could not open \"%s\"."
-                                             file-name))))
-        with-defaults (merge default-settings
-                             user-settings)]
-    (update with-defaults
-            :monitor-processes-regex
-            #(format "pgrep -af '%s'"
-                     (string/join "|" %1)))))
+  (let [file-name      "moccafaux.json"
+        user-settings  (try (json/read-str (slurp file-name)
+                                           :key-fn keyword)
+                            (catch Exception _
+                              (printf (format "Warning: could not open \"%s\"."
+                                              file-name))))
+        added-defaults (merge default-settings user-settings)]
+    (->> added-defaults
+         :monitor-processes-regex
+         (string/join "|")
+         (format "pgrep -af '%s'")
+         (assoc added-defaults :monitor-processes-cmd))))
 
 
 (defn shell-exec-success? [shell-cmd pred-key]
@@ -47,7 +47,7 @@
 
 (defn update-status []
   {:processes  (shell-exec-success?
-                (settings :monitor-processes-regex)
+                (settings :monitor-processes-cmd)
                 :monitor-processes)
    :pulseaudio (shell-exec-success?
                 "pactl list short sinks | grep -E '\\bRUNNING$'"
