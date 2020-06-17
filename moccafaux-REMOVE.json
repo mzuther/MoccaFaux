@@ -15,9 +15,9 @@
     "^unison\\S*"
   ],
 
-  "dpms-enable":  "xset dpms 600 900 1200",
+  "dpms-enable":  "xset +dpms",
   "dpms-disable": "xset -dpms",
 
-  "suspend-enable":  "xautolock -time 15 -locker 'systemctl suspend' -detectsleep",
-  "suspend-disable": "xautolock -exit"
+  "sleep-enable":  "xautolock -enable",
+  "sleep-disable": "xautolock -disable"
 }
