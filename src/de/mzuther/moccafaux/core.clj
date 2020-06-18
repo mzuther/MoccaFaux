@@ -64,7 +64,9 @@
                    :sleep-disable-cmd "keep computer awake"
                    :dpms-enable-cmd   "allow screen to save energy"
                    :dpms-disable-cmd  "keep screen awake"}
-        timestamp (. (java.time.LocalTime/now) toString)
+        timestamp (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
+                     format
+                     (java.time.LocalTime/now))
 
         awake-key  (keyword (str (name section)
                                  "-keep-awake"))
@@ -79,10 +81,10 @@
       (println (format "[%s]  Change:  %s"
                        timestamp
                        (get messages command-key)))
-      (println (format "                Command: %s"
+      (println (format "            Command: %s"
                        command))
       (let [exit-code (shell-exec command fork?)]
-        (println (format "                Result:  %s"
+        (println (format "            Result:  %s"
                          (condp = exit-code
                            0  "success"
                            -1 "forked"
