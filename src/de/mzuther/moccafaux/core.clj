@@ -132,8 +132,15 @@
            "  |")
   (println "            o---------------------o")
 
+  (println)
+  (println (format "[%s]  Skipping one time interval ..."
+                   (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
+                      format
+                      (java.time.LocalTime/now))))
+
   (chime/chime-at (->> (settings :probing-interval)
                        (java.time.Duration/ofSeconds)
-                       (chime/periodic-seq (java.time.Instant/now)))
+                       (chime/periodic-seq (java.time.Instant/now))
+                       (rest))
                   (fn [_]
                     (update-status))))
