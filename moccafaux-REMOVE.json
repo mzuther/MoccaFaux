@@ -21,7 +21,7 @@
     {
       "name":     "video",
       "enabled":  true,
-      "command":  "pgrep -l '^(celluloid|vlc)$'",
+      "command":  "pgrep -l '^(celluloid|skypeforlinux|vlc)$'",
 
       "control-sleep": true,
       "control-dpms":  true
@@ -39,6 +39,6 @@
   "sleep-enable-cmd":  "xautolock -enable",
   "sleep-disable-cmd": "xautolock -disable",
 
-  "dpms-enable-cmd":  "xset +dpms",
+  "dpms-enable-cmd":  "xset dpms 600 900 1200",
   "dpms-disable-cmd": "xset -dpms"
 }
