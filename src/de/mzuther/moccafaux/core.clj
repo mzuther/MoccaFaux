@@ -1,7 +1,7 @@
 (ns de.mzuther.moccafaux.core
   (:require [clojure.data.json :as json]
-            [clojure.java.shell :as shell]
-            [chime.core :as chime])
+            [chime.core :as chime]
+            [popen])
   (:gen-class))
 
 
@@ -31,10 +31,17 @@
            user-settings)))
 
 
-(defn shell-exec [command]
-  (->> command
-       (shell/sh "sh" "-c")
-       :exit))
+(defn shell-exec [command fork?]
+  (let [new-process (popen/popen ["sh" "-c" command ])]
+    (if fork?
+      (do
+        ;; wait for 10 ms to check whether the process is actually
+        ;; created and running
+        (Thread/sleep 10)
+        (if (popen/running? new-process)
+          -1
+          1))
+      (popen/exit-code new-process))))
 
 
 (defn status-shell-exec [{:keys [name enabled command
@@ -44,7 +51,7 @@
   ;; (for example, "grep" and "pgrep" return a *zero* exit code when
   ;; they find matching lines or processes)
   (let [enable-energy-saving? (when enabled
-                                (zero? (shell-exec command)))]
+                                (zero? (shell-exec command false)))]
     {:name          name
      :disable-sleep (when control-sleep
                       enable-energy-saving?)
@@ -65,7 +72,8 @@
 
         command-key (keyword (str (name section)
                                   (if keep-awake "-disable-cmd" "-enable-cmd")))
-        command     (get settings command-key)]
+        command     (get-in settings [command-key :command])
+        fork?       (get-in settings [command-key :fork])]
     (when command
       (println)
       (println (format "[%s]  Change:  %s"
@@ -73,9 +81,12 @@
                        (get messages command-key)))
       (println (format "                Command: %s"
                        command))
-      (let [exit-code (shell-exec command)]
+      (let [exit-code (shell-exec command fork?)]
         (println (format "                Result:  %s"
-                         (if (zero? exit-code) "success" "failed")))
+                         (condp = exit-code
+                           0  "success"
+                           -1 "forked"
+                           "failed")))
         exit-code))))
 
 

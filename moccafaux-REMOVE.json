@@ -10,6 +10,7 @@
       "control-sleep": true,
       "control-dpms":  false
     },
+
     {
       "name":     "audio",
       "enabled":  true,
@@ -18,6 +19,7 @@
       "control-sleep": true,
       "control-dpms":  false
     },
+
     {
       "name":     "video",
       "enabled":  true,
@@ -26,6 +28,7 @@
       "control-sleep": true,
       "control-dpms":  true
     },
+
     {
       "name":     "zfs-scrub",
       "enabled":  true,
@@ -36,9 +39,23 @@
     }
   ],
 
-  "sleep-enable-cmd":  "xautolock -enable",
-  "sleep-disable-cmd": "xautolock -disable",
+  "sleep-enable-cmd": {
+    "command": "xautolock -time 15 -locker \"systemctl suspend\" -detectsleep",
+    "fork":    true
+  },
 
-  "dpms-enable-cmd":  "xset dpms 600 900 1200",
-  "dpms-disable-cmd": "xset -dpms"
+  "sleep-disable-cmd": {
+    "command": "xautolock -exit",
+    "fork":    false
+  },
+
+  "dpms-enable-cmd": {
+    "command": "xset dpms 600 900 1200",
+    "fork":    false
+  },
+
+  "dpms-disable-cmd": {
+    "command": "xset -dpms",
+    "fork":    false
+  }
 }

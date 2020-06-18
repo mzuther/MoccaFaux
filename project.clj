@@ -6,7 +6,8 @@
 
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/data.json "1.0.0"]
-                 [jarohen/chime "0.3.2"]]
+                 [jarohen/chime "0.3.2"]
+                 [popen "0.3.1"]]
 
   :main ^:skip-aot de.mzuther.moccafaux.core
   :target-path "target/%s"
