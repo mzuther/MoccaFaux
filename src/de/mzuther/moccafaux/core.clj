@@ -16,8 +16,8 @@
 
 
 ;; force update on first call to "update-status"
-(def status (ref {:sleep-disabled nil
-                  :dpms-disabled  nil}))
+(def status (ref {:sleep-keep-awake nil
+                  :dpms-keep-awake  nil}))
 
 
 (def settings
@@ -53,18 +53,18 @@
 
 
 (defn update-energy-saving [section]
-  (let [messages    {:sleep-enable-cmd  "enabling sleep"
-                     :sleep-disable-cmd "disabling sleep"
-                     :dpms-enable-cmd   "enabling DPMS"
-                     :dpms-disable-cmd  "disabling DPMS"}
-        timestamp   (. (java.time.LocalTime/now) toString)
+  (let [messages  {:sleep-enable-cmd  "allow computer to save energy"
+                   :sleep-disable-cmd "keep computer awake"
+                   :dpms-enable-cmd   "allow screen to save energy"
+                   :dpms-disable-cmd  "keep screen awake"}
+        timestamp (. (java.time.LocalTime/now) toString)
 
-        state-key   (keyword (str (name section)
-                                  "-disabled"))
-        state       (get @status state-key)
+        awake-key  (keyword (str (name section)
+                                 "-keep-awake"))
+        keep-awake (get @status awake-key)
 
         command-key (keyword (str (name section)
-                                  (if state "-disable-cmd" "-enable-cmd")))
+                                  (if keep-awake "-disable-cmd" "-enable-cmd")))
         command     (get settings command-key)]
     (when command
       (println)
@@ -90,14 +90,14 @@
   (let [results        (->> (get settings :monitor)
                             (map status-shell-exec)
                             (remove nil?))
-        new-status     {:sleep-disabled (true-false-or-nil?
-                                          (map :disable-sleep results))
-                        :dpms-disabled  (true-false-or-nil?
-                                          (map :disable-dpms results))}
-        sleep-updated? (not= (get @status    :sleep-disabled)
-                             (get new-status :sleep-disabled))
-        dpms-updated?  (not= (get @status    :dpms-disabled)
-                             (get new-status :dpms-disabled))]
+        new-status     {:sleep-keep-awake (true-false-or-nil?
+                                            (map :disable-sleep results))
+                        :dpms-keep-awake  (true-false-or-nil?
+                                            (map :disable-dpms results))}
+        sleep-updated? (not= (get @status    :sleep-keep-awake)
+                             (get new-status :sleep-keep-awake))
+        dpms-updated?  (not= (get @status    :dpms-keep-awake)
+                             (get new-status :dpms-keep-awake))]
     (dosync
       (ref-set status new-status))
     (when sleep-updated?
