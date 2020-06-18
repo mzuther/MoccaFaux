@@ -64,7 +64,7 @@
         state       (get @status state-key)
 
         command-key (keyword (str (name section)
-                                  (if state "-enable-cmd" "-disable-cmd")))
+                                  (if state "-disable-cmd" "-enable-cmd")))
         command     (get settings command-key)]
     (when command
       (println)
