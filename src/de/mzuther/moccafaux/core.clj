@@ -1,4 +1,4 @@
-(ns moccafaux.core
+(ns de.mzuther.moccafaux.core
   (:require [clojure.data.json :as json]
             [clojure.java.shell :as shell]
             [chime.core :as chime])
