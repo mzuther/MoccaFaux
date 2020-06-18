@@ -1,7 +1,8 @@
 (ns de.mzuther.moccafaux.core
   (:require [clojure.data.json :as json]
             [chime.core :as chime]
-            [popen])
+            [popen]
+            [trptcolin.versioneer.core :as version])
   (:gen-class))
 
 
@@ -122,6 +123,13 @@
 
 (defn -main
   [& _]
+  (println)
+  (println "            o---------------------o")
+  (println "            |   moccafaux"
+           (version/get-version "de.mzuther" "moccafaux.core")
+           "  |")
+  (println "            o---------------------o")
+
   (chime/chime-at (->> (settings :probing-interval)
                        (java.time.Duration/ofSeconds)
                        (chime/periodic-seq (java.time.Instant/now)))
