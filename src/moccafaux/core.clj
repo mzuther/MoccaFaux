@@ -52,19 +52,25 @@
                       enable-energy-saving?)}))
 
 
-(defn update-energy-saving [what-to-do]
-  (let [messages    {:sleep-enable  "enabling sleep"
-                     :sleep-disable "disabling sleep"
-                     :dpms-enable   "enabling DPMS"
-                     :dpms-disable  "disabling DPMS"}
+(defn update-energy-saving [section]
+  (let [messages    {:sleep-enable-cmd  "enabling sleep"
+                     :sleep-disable-cmd "disabling sleep"
+                     :dpms-enable-cmd   "enabling DPMS"
+                     :dpms-disable-cmd  "disabling DPMS"}
         timestamp   (. (java.time.LocalTime/now) toString)
-        command-key (-> what-to-do (name) (str "-cmd") (keyword))
+
+        state-key   (keyword (str (name section)
+                                  "-disabled"))
+        state       (get @status state-key)
+
+        command-key (keyword (str (name section)
+                                  (if state "-enable-cmd" "-disable-cmd")))
         command     (get settings command-key)]
     (when command
       (println)
       (println (format "[%s]  Change:  %s"
                        timestamp
-                       (get messages what-to-do)))
+                       (get messages command-key)))
       (println (format "                Command: %s"
                        command))
       (let [exit-code (shell-exec command)]
@@ -93,16 +99,11 @@
         dpms-updated?  (not= (get @status    :dpms-disabled)
                              (get new-status :dpms-disabled))]
     (dosync
-      (ref-set status
-               new-status))
+      (ref-set status new-status))
     (when sleep-updated?
-      (if (get @status :sleep-disabled)
-        (update-energy-saving :sleep-disable)
-        (update-energy-saving :sleep-enable)))
+      (update-energy-saving :sleep))
     (when dpms-updated?
-      (if (get @status :dpms-disabled)
-        (update-energy-saving :dpms-disable)
-        (update-energy-saving :dpms-enable)))
+      (update-energy-saving :dpms))
     new-status))
 
 
