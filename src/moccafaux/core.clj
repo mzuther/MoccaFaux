@@ -1,47 +1,34 @@
 (ns moccafaux.core
   (:require [clojure.data.json :as json]
             [clojure.java.shell :as shell]
-            [clojure.string :as string]
             [chime.core :as chime])
   (:gen-class))
 
 
-(def default-settings
-  {:probing-interval 60,
+(def default-settings {:probing-interval  60,
+                       :monitor           [],
 
-   :monitor-processes  true,
-   :monitor-pulseaudio false,
-   :monitor-zfs-scrub  false,
+                       :sleep-enable-cmd  nil,
+                       :sleep-disable-cmd nil,
 
-   :monitor-processes-regex [],
-
-   :dpms-enable  nil,
-   :dpms-disable nil,
-
-   :sleep-enable  nil,
-   :sleep-disable nil })
+                       :dpms-enable-cmd   nil,
+                       :dpms-disable-cmd  nil})
 
 
-;; force update on status
-(def status
-  (ref (zipmap [:processes :pulseaudio :zfs-scrub
-                :dpms-disabled :sleep-disabled]
-               (repeat nil))))
+;; force update on first call to "update-status"
+(def status (ref {:sleep-disabled nil
+                  :dpms-disabled  nil}))
 
 
 (def settings
-  (let [file-name      "moccafaux.json"
-        user-settings  (try (json/read-str (slurp file-name)
-                                           :key-fn keyword)
-                            (catch Exception _
-                              (println (format "Warning: could not open \"%s\"."
-                                               file-name))))
-        added-defaults (merge default-settings user-settings)]
-    (->> added-defaults
-         :monitor-processes-regex
-         (string/join "|")
-         (format "pgrep -af '%s'")
-         (assoc added-defaults :monitor-processes-cmd))))
+  (let [file-name     "moccafaux.json"
+        user-settings (try (json/read-str (slurp file-name)
+                                          :key-fn keyword)
+                           (catch Exception _
+                             (println (format "Warning: could not open \"%s\"."
+                                              file-name))))]
+    (merge default-settings
+           user-settings)))
 
 
 (defn shell-exec [command]
@@ -50,64 +37,72 @@
        :exit))
 
 
-(defn shell-exec-success? [command pred-key]
-  (if (settings pred-key)
-    (->> (shell-exec command)
-         (= 0))
-    (println (format "Key %s not found in settings."
-                     pred-key))))
+(defn status-shell-exec [{:keys [name enabled command
+                                 control-sleep control-dpms]}]
+  ;; enable energy saving when the shell command returns a *non-zero*
+  ;; exit code, as this means that no interfering processes were found
+  ;; (for example, "grep" and "pgrep" return a *zero* exit code when
+  ;; they find matching lines or processes)
+  (let [enable-energy-saving? (when enabled
+                                (zero? (shell-exec command)))]
+    {:name          name
+     :disable-sleep (when control-sleep
+                      enable-energy-saving?)
+     :disable-dpms  (when control-dpms
+                      enable-energy-saving?)}))
 
 
-(defn get-new-status []
-  (let [processes?  (shell-exec-success?
-                      (settings :monitor-processes-cmd)
-                      :monitor-processes)
-        pulseaudio? (shell-exec-success?
-                      "pactl list short sinks | grep -E '\\bRUNNING$'"
-                      :monitor-pulseaudio)
-        zfs-scrub?  (shell-exec-success?
-                      "zpool status | grep -E '(resilver|scrub) in progress'"
-                      :monitor-zfs-scrub)
-        new-status  {:processes      processes?
-                     :pulseaudio     pulseaudio?
-                     :zfs-scrub      zfs-scrub?
-                     :dpms-disabled  (boolean pulseaudio?)
-                     :sleep-disabled (boolean (or processes?
-                                                  pulseaudio?
-                                                  zfs-scrub?))}]
-    new-status))
-
-
-(defn update-power-management [selector]
-  (let [message {:dpms-enable   "Enabling DPMS ..... "
-                 :dpms-disable  "Disabling DPMS .... "
-                 :sleep-enable  "Enabling sleep .... "
-                 :sleep-disable "Disabling sleep ... "}
-        command (get settings selector)]
+(defn update-energy-saving [what-to-do]
+  (let [messages    {:sleep-enable  "enabling sleep"
+                     :sleep-disable "disabling sleep"
+                     :dpms-enable   "enabling DPMS"
+                     :dpms-disable  "disabling DPMS"}
+        timestamp   (. (java.time.LocalTime/now) toString)
+        command-key (-> what-to-do (name) (str "-cmd") (keyword))
+        command     (get settings command-key)]
     (when command
-      (print (message selector))
-      (if (shell-exec command)
-        (println "ok")
-        (println "failed")))))
+      (println)
+      (println (format "[%s]  Change:  %s"
+                       timestamp
+                       (get messages what-to-do)))
+      (println (format "                Command: %s"
+                       command))
+      (let [exit-code (shell-exec command)]
+        (println (format "                Result:  %s"
+                         (if (zero? exit-code) "success" "failed")))
+        exit-code))))
+
+
+(defn- true-false-or-nil? [coll]
+  (cond
+    (some true? coll) true
+    (some false? coll) false
+    :else nil))
 
 
 (defn update-status []
-  (let [new-status     (get-new-status)
-        dpms-updated?  (not= (get @status :dpms-disabled)
-                             (get new-status :dpms-disabled))
-        sleep-updated? (not= (get @status :sleep-disabled)
-                             (get new-status :sleep-disabled))]
+  (let [results        (->> (get settings :monitor)
+                            (map status-shell-exec)
+                            (remove nil?))
+        new-status     {:sleep-disabled (true-false-or-nil?
+                                          (map :disable-sleep results))
+                        :dpms-disabled  (true-false-or-nil?
+                                          (map :disable-dpms results))}
+        sleep-updated? (not= (get @status    :sleep-disabled)
+                             (get new-status :sleep-disabled))
+        dpms-updated?  (not= (get @status    :dpms-disabled)
+                             (get new-status :dpms-disabled))]
     (dosync
       (ref-set status
                new-status))
     (when sleep-updated?
       (if (get @status :sleep-disabled)
-        (update-power-management :sleep-disable)
-        (update-power-management :sleep-enable)))
+        (update-energy-saving :sleep-disable)
+        (update-energy-saving :sleep-enable)))
     (when dpms-updated?
       (if (get @status :dpms-disabled)
-        (update-power-management :dpms-disable)
-        (update-power-management :dpms-enable)))
+        (update-energy-saving :dpms-disable)
+        (update-energy-saving :dpms-enable)))
     new-status))
 
 

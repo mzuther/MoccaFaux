@@ -1,23 +1,44 @@
 {
   "probing-interval": 60,
 
-  "monitor-processes":  true,
-  "monitor-pulseaudio": true,
-  "monitor-zfs-scrub":  true,
+  "monitor": [
+    {
+      "name":    "important-processes",
+      "enabled": true,
+      "command": "pgrep -af '^dpkg\\b|^pacman\\b|^dar\\s|^/\\S*rsync\\b|^ssh\\s|^unison\\S*'",
 
-  "monitor-processes-regex": [
-    "^dpkg\\b",
-    "^pacman\\b",
+      "control-sleep": true,
+      "control-dpms":  false
+    },
+    {
+      "name":     "audio",
+      "enabled":  true,
+      "command":  "pactl list short sinks | grep -E '\\bRUNNING$'",
 
-    "^dar\\s",
-    "^/\\S*rsync\\b",
-    "^ssh\\s",
-    "^unison\\S*"
+      "control-sleep": true,
+      "control-dpms":  false
+    },
+    {
+      "name":     "video",
+      "enabled":  true,
+      "command":  "pgrep -l '^(celluloid|vlc)$'",
+
+      "control-sleep": true,
+      "control-dpms":  true
+    },
+    {
+      "name":     "zfs-scrub",
+      "enabled":  true,
+      "command":  "zpool status | grep -E '(resilver|scrub) in progress'",
+
+      "control-sleep": true,
+      "control-dpms":  false
+    }
   ],
 
-  "dpms-enable":  "xset +dpms",
-  "dpms-disable": "xset -dpms",
+  "sleep-enable-cmd":  "xautolock -enable",
+  "sleep-disable-cmd": "xautolock -disable",
 
-  "sleep-enable":  "xautolock -enable",
-  "sleep-disable": "xautolock -disable"
+  "dpms-enable-cmd":  "xset +dpms",
+  "dpms-disable-cmd": "xset -dpms"
 }
