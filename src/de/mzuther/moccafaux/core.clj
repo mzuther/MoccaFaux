@@ -1,5 +1,6 @@
 (ns de.mzuther.moccafaux.core
   (:require [clojure.data.json :as json]
+            [clojure.java.io :as io]
             [chime.core :as chime]
             [popen]
             [trptcolin.versioneer.core :as version])
@@ -22,7 +23,8 @@
 
 
 (def settings
-  (let [file-name     "moccafaux.json"
+  (let [file-name     (io/file (System/getProperty "user.home")
+                               ".config" "moccafaux" "config.json")
         user-settings (try (json/read-str (slurp file-name)
                                           :key-fn keyword)
                            (catch Exception _
