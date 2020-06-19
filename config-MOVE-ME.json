@@ -50,7 +50,7 @@
   },
 
   "dpms-enable-cmd": {
-    "command": "xset dpms 600 900 1200",
+    "command": "xset dpms 300 600 900",
     "fork":    false
   },
 

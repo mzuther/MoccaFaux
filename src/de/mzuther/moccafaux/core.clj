@@ -102,7 +102,7 @@
     :else nil))
 
 
-(defn update-status []
+(defn update-status [_]
   (let [results        (->> (get settings :monitor)
                             (map status-shell-exec)
                             (remove nil?))
@@ -142,5 +142,12 @@
                        (java.time.Duration/ofSeconds)
                        (chime/periodic-seq (java.time.Instant/now))
                        (rest))
-                  (fn [_]
-                    (update-status))))
+                  (fn [timestamp]
+                    (let [actual-epoch (.toEpochMilli (java.time.Instant/now))
+                          target-epoch (.toEpochMilli timestamp)
+                          seconds-late (/ (- actual-epoch target-epoch)
+                                          1000.0)]
+                      ;; skip tasks that were scheduled for instants
+                      ;; that were actually spent in computer Nirvana
+                      (when (< seconds-late (settings :probing-interval))
+                        (update-status timestamp))))))
