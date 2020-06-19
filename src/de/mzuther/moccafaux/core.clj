@@ -7,6 +7,10 @@
   (:gen-class))
 
 
+(defn- printfln [fmt & args]
+  (println (apply format fmt args)))
+
+
 (def default-settings {:probing-interval  60,
                        :monitor           [],
 
@@ -28,8 +32,9 @@
         user-settings (try (json/read-str (slurp file-name)
                                           :key-fn keyword)
                            (catch Exception _
-                             (println (format "Warning: could not open \"%s\"."
-                                              file-name))))]
+                             (newline)
+                             (printfln "WARNING: could not open \"%s\"."
+                                       file-name)))]
     (merge default-settings
            user-settings)))
 
@@ -81,17 +86,17 @@
         fork?       (get-in settings [command-key :fork])]
     (when command
       (println)
-      (println (format "[%s]  Change:  %s"
-                       timestamp
-                       (get messages command-key)))
-      (println (format "            Command: %s"
-                       command))
+      (printfln "[%s]  Change:  %s"
+                timestamp
+                (get messages command-key))
+      (printfln "            Command: %s"
+                command)
       (let [exit-code (shell-exec command fork?)]
-        (println (format "            Result:  %s"
-                         (condp = exit-code
-                           0  "success"
-                           -1 "forked"
-                           "failed")))
+        (printfln "            Result:  %s"
+                  (condp = exit-code
+                    0  "success"
+                    -1 "forked"
+                    "failed"))
         exit-code))))
 
 
@@ -133,10 +138,10 @@
   (println "            o---------------------o")
 
   (println)
-  (println (format "[%s]  Skipping one time interval ..."
-                   (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
-                      format
-                      (java.time.LocalTime/now))))
+  (printfln "[%s]  Skipping one time interval ..."
+            (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
+               format
+               (java.time.LocalTime/now)))
 
   (chime/chime-at (->> (settings :probing-interval)
                        (java.time.Duration/ofSeconds)
