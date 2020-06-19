@@ -1,6 +1,6 @@
 (defproject de.mzuther/moccafaux.core "1.0.0"
   :description "Adapt power management to changes in the environment."
-  :url "http://code.mzuther.de/"
+  :url "https://github.com/mzuther/moccafaux"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}
 
@@ -12,5 +12,6 @@
 
   :main ^:skip-aot de.mzuther.moccafaux.core
   :target-path "target/%s"
+  :uberjar-name "moccafaux.jar"
 
   :profiles {:uberjar {:aot :all}})
