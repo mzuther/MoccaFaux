@@ -28,6 +28,17 @@ example compiling an application if files in a directory change.  In
 practice, you might be better advised to use dedicated software and
 APIs like [Gulp.watch] and [inotify].
 
+## The name
+
+As this application was conceived as a substitue for [caffeine], I
+originally called it *Muckefuck* (pronounced [ˈmʊkəfʊk]).  This is the
+colloquial German term for [coffee substitute].
+
+However, most English speakers would consider this name to contain a
+certain bad word (which it doesn't).  I liked the name though, so I
+changed it to *Mocca faux*, which might be the French origin for
+*Muckefuck*.
+
 ## Installation
 
 You need an installation of Java SE 11 (any version for SE 8 probably
@@ -52,6 +63,13 @@ Open a shell and locate to the MoccaFaux directory.  Then execute:
 MALLOC_ARENA_MAX=4 java -jar ./target/uberjar/moccafaux.jar
 ```
 
+## Options
+
+*To do done.*
+
+For now, copy `config-MOVE-ME.json` to
+`$HOME/.config/moccafaux/config.json` and edit to taste.
+
 ## License
 
 Copyright (c) 2020 [Martin Zuther]
@@ -71,9 +89,10 @@ https://www.gnu.org/software/classpath/license.html.
 Thank you for using free software!
 
 
-[caffeine]:       https://launchpad.net/caffeine
-[inotify]:        https://en.wikipedia.org/wiki/Inotify
-[Gulp.watch]:     https://gulpjs.com/docs/en/getting-started/watching-files
+[caffeine]:           https://launchpad.net/caffeine
+[coffee substitute]:  https://en.wikipedia.org/wiki/Coffee_substitute
+[inotify]:            https://en.wikipedia.org/wiki/Inotify
+[Gulp.watch]:         https://gulpjs.com/docs/en/getting-started/watching-files
 
 [Martin Zuther]:  http://www.mzuther.de/
 [releases]:       https://github.com/mzuther/moccafaux/releases
