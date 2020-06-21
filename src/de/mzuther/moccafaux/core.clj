@@ -1,6 +1,7 @@
 (ns de.mzuther.moccafaux.core
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]
+            [clojure.string :as string]
             [chime.core :as chime]
             [com.rpl.specter :as sp]
             [popen]
@@ -10,6 +11,30 @@
 
 (defn- printfln [fmt & args]
   (println (apply format fmt args)))
+
+
+(defn- print-header []
+  (let [fill-string  (fn [length char] (->> char
+                                            (repeat length)
+                                            (apply str)))
+        add-borders  (fn [s char] (string/join [char s char]))
+
+        header       (str "MoccaFaux v" (version/get-version "de.mzuther"
+                                                             "moccafaux.core"))
+
+        page-width   78
+        left-margin  (quot (- page-width (count header)) 2)
+        right-margin (- page-width (count header) left-margin)
+
+        full-line    (-> (fill-string page-width "-")
+                         (add-borders "o"))
+        full-header  (-> (string/join [(fill-string left-margin " ")
+                                       header
+                                       (fill-string right-margin " ")])
+                         (add-borders "|"))]
+    (println full-line)
+    (println full-header)
+    (println full-line)))
 
 
 (def default-settings {:probing-interval  60,
@@ -40,7 +65,7 @@
            user-settings)))
 
 
-(defn shell-exec [command fork?]
+(defn- shell-exec [command fork?]
   (let [new-process (popen/popen ["sh" "-c" command ])]
     (if fork?
       (do
@@ -53,8 +78,8 @@
       (popen/exit-code new-process))))
 
 
-(defn status-shell-exec [{:keys [name enabled command
-                                 control]}]
+(defn- status-shell-exec [{:keys [name enabled command
+                                  control]}]
   ;; enable energy saving when the shell command returns a *non-zero*
   ;; exit code, as this means that no interfering processes were found
   ;; (for example, "grep" and "pgrep" return a *zero* exit code when
@@ -69,17 +94,17 @@
 
 
 (defn update-energy-saving [section]
-  (let [messages  {:sleep-enable-cmd  "allow computer to save energy"
-                   :sleep-disable-cmd "keep computer awake"
-                   :dpms-enable-cmd   "allow screen to save energy"
-                   :dpms-disable-cmd  "keep screen awake"}
-        timestamp (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
-                     format
-                     (java.time.LocalTime/now))
+  (let [messages    {:sleep-enable-cmd  "allow computer to save energy"
+                     :sleep-disable-cmd "keep computer awake"
+                     :dpms-enable-cmd   "allow screen to save energy"
+                     :dpms-disable-cmd  "keep screen awake"}
+        timestamp   (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
+                       format
+                       (java.time.LocalTime/now))
 
-        awake-key  (keyword (str (name section)
-                                 "-keep-awake"))
-        keep-awake (sp/select-one [awake-key] @status)
+        awake-key   (keyword (str (name section)
+                                  "-keep-awake"))
+        keep-awake  (sp/select-one [awake-key] @status)
 
         command-key (keyword (str (name section)
                                   (if keep-awake "-disable-cmd" "-enable-cmd")))
@@ -132,11 +157,7 @@
 (defn -main
   [& _]
   (println)
-  (println "            o---------------------o")
-  (println "            |   moccafaux"
-           (version/get-version "de.mzuther" "moccafaux.core")
-           "  |")
-  (println "            o---------------------o")
+  (print-header)
 
   (println)
   (printfln "[%s]  Skipping one time interval ..."
