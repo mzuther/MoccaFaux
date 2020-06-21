@@ -7,9 +7,9 @@
       "enabled": true,
       "command": "pgrep -af '^dpkg\\b|^pacman\\b|^dar\\s|^/\\S*rsync\\b|^ssh\\s|^unison\\S*'",
 
-      "control": [
-        "sleep"
-      ]
+      "tasks": {
+        "sleep": true
+      }
     },
 
     {
@@ -17,9 +17,9 @@
       "enabled":  true,
       "command":  "pactl list short sinks | grep -E '\\bRUNNING$'",
 
-      "control": [
-        "sleep"
-      ]
+      "tasks": {
+        "sleep": true
+      }
     },
 
     {
@@ -27,10 +27,10 @@
       "enabled":  true,
       "command":  "pgrep -l '^(celluloid|skypeforlinux|vlc)$'",
 
-      "control": [
-        "dpms",
-        "sleep"
-      ]
+      "tasks": {
+        "dpms": true,
+        "sleep": true
+      }
     },
 
     {
@@ -38,9 +38,9 @@
       "enabled":  true,
       "command":  "zpool status | grep -E '(resilver|scrub) in progress'",
 
-      "control": [
-        "sleep"
-      ]
+      "tasks": {
+        "sleep": true
+      }
     }
   ],
 
