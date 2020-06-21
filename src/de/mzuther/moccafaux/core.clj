@@ -53,7 +53,7 @@
 
 
 (defn status-shell-exec [{:keys [name enabled command
-                                 control-sleep control-dpms]}]
+                                 control]}]
   ;; enable energy saving when the shell command returns a *non-zero*
   ;; exit code, as this means that no interfering processes were found
   ;; (for example, "grep" and "pgrep" return a *zero* exit code when
@@ -61,9 +61,9 @@
   (let [enable-energy-saving? (when enabled
                                 (zero? (shell-exec command false)))]
     {:name          name
-     :disable-sleep (when control-sleep
+     :disable-sleep (when (some (partial = "sleep") control)
                       enable-energy-saving?)
-     :disable-dpms  (when control-dpms
+     :disable-dpms  (when (some (partial = "dpms") control)
                       enable-energy-saving?)}))
 
 
