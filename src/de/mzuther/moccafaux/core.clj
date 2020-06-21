@@ -57,10 +57,11 @@
                                ".config" "moccafaux" "config.json")
         user-settings (try (json/read-str (slurp file-name)
                                           :key-fn keyword)
-                           (catch Exception _
+                           (catch Exception e
                              (newline)
-                             (printfln "WARNING: could not open \"%s\"."
-                                       file-name)))]
+                             (printfln "WARNING: could not open \"%s\":"
+                                       file-name)
+                             (println "        " (.getMessage e))))]
     (merge default-settings
            user-settings)))
 
