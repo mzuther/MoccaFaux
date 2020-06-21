@@ -145,16 +145,9 @@
   (println)
   (print-header)
 
-  (println)
-  (printfln "[%s]  Skipping one time interval ..."
-            (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
-               format
-               (java.time.LocalTime/now)))
-
   (chime/chime-at (->> (sp/select-one [:probing-interval] preferences)
                        (java.time.Duration/ofSeconds)
-                       (chime/periodic-seq (java.time.Instant/now))
-                       (rest))
+                       (chime/periodic-seq (java.time.Instant/now)))
                   (fn [timestamp]
                     (let [actual-epoch (.toEpochMilli (java.time.Instant/now))
                           target-epoch (.toEpochMilli timestamp)
