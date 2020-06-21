@@ -47,17 +47,20 @@
 
 
 (def preferences
-  (let [file-name        (io/file (System/getProperty "user.home")
-                                  ".config" "moccafaux" "config.json")
-        user-preferences (try (json/read-str (slurp file-name)
-                                             :key-fn keyword)
-                              (catch Exception e
-                                (newline)
-                                (printfln "WARNING: could not open \"%s\":"
-                                          file-name)
-                                (println "        " (.getMessage e))))]
-    (merge default-preferences
-           user-preferences)))
+  (try (let [file-name  (io/file (System/getProperty "user.home")
+                                 ".config" "moccafaux" "config.json")
+             user-prefs (json/read-str (slurp file-name)
+                                       :key-fn keyword)]
+         (when-not (map? user-prefs)
+           (throw (Exception. "JSON error (not handled by library)")))
+         (merge default-preferences
+                user-prefs))
+       (catch Throwable e
+         (newline)
+         (println (.toString e))
+         (newline)
+         (flush)
+         (System/exit 1))))
 
 
 (defn- shell-exec [command fork?]

@@ -48,7 +48,7 @@
     "sleep": {
       "enable": {
         "message": "allow computer to save energy",
-        "command": "xautolock -time 15 -locker \"systemctl suspend\" -detectsleep",
+        "command": "xautolock -time 15 -locker 'systemctl suspend' -detectsleep",
         "fork":    true
       },
       "disable": {
