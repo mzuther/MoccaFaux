@@ -2,6 +2,7 @@
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]
             [chime.core :as chime]
+            [com.rpl.specter :as sp]
             [popen]
             [trptcolin.versioneer.core :as version])
   (:gen-class))
@@ -78,17 +79,17 @@
 
         awake-key  (keyword (str (name section)
                                  "-keep-awake"))
-        keep-awake (get @status awake-key)
+        keep-awake (sp/select-one [awake-key] @status)
 
         command-key (keyword (str (name section)
                                   (if keep-awake "-disable-cmd" "-enable-cmd")))
-        command     (get-in settings [command-key :command])
-        fork?       (get-in settings [command-key :fork])]
+        command     (sp/select-one [command-key :command] settings)
+        fork?       (sp/select-one [command-key :fork] settings)]
     (when command
       (println)
       (printfln "[%s]  Change:  %s"
                 timestamp
-                (get messages command-key))
+                (sp/select-one [command-key] messages))
       (printfln "            Command: %s"
                 command)
       (let [exit-code (shell-exec command fork?)]
@@ -108,17 +109,17 @@
 
 
 (defn update-status [_]
-  (let [results        (->> (get settings :monitor)
+  (let [results        (->> (sp/select-one [:monitor] settings)
                             (map status-shell-exec)
                             (remove nil?))
         new-status     {:sleep-keep-awake (true-false-or-nil?
                                             (map :disable-sleep results))
                         :dpms-keep-awake  (true-false-or-nil?
                                             (map :disable-dpms results))}
-        sleep-updated? (not= (get @status    :sleep-keep-awake)
-                             (get new-status :sleep-keep-awake))
-        dpms-updated?  (not= (get @status    :dpms-keep-awake)
-                             (get new-status :dpms-keep-awake))]
+        sleep-updated? (not= (sp/select-one [:sleep-keep-awake] @status)
+                             (sp/select-one [:sleep-keep-awake] new-status))
+        dpms-updated?  (not= (sp/select-one [:dpms-keep-awake] @status)
+                             (sp/select-one [:dpms-keep-awake] new-status))]
     (dosync
       (ref-set status new-status))
     (when sleep-updated?
@@ -143,7 +144,7 @@
                format
                (java.time.LocalTime/now)))
 
-  (chime/chime-at (->> (settings :probing-interval)
+  (chime/chime-at (->> (sp/select-one [:probing-interval] settings)
                        (java.time.Duration/ofSeconds)
                        (chime/periodic-seq (java.time.Instant/now))
                        (rest))
