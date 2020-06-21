@@ -40,11 +40,15 @@
 (def task-states (ref {}))
 
 
-(defn- printfln [fmt & args]
+(defn- printfln
+  "Print formatted output, as per format, followed by (newline)."
+  [fmt & args]
   (println (apply format fmt args)))
 
 
-(defn- print-header []
+(defn- print-header
+  "Print a nicely formatted header with application name and version number."
+  []
   (let [fill-string  (fn [length char] (->> char (repeat length) (apply str)))
         add-borders  (fn [s char] (string/join [char s char]))
 
@@ -61,12 +65,19 @@
                                      header
                                      (fill-string right-margin " ")])
                        "|")]
+    (println)
     (println full-line)
     (println full-header)
     (println full-line)))
 
 
-(defn- shell-exec [command fork?]
+(defn- shell-exec
+  "Execute command in a shell compatible to the Bourne shell and
+  fork process if fork? is true.
+
+  Return :forked if command has forked, :success if command has
+  exited with a zero exit code, and :failed in any other case."
+  [command fork?]
   (let [new-process (popen/popen ["sh" "-c" command])]
     (if-not fork?
       (if (zero? (popen/exit-code new-process))
@@ -81,56 +92,98 @@
           :failed)))))
 
 
-(defn- status-shell-exec [[name {:keys [enabled command tasks]}]]
-  ;; Enable energy saving when a task is enabled and the respective
-  ;; shell command failed (returned a *non-zero* exit code), as this
-  ;; means that no interfering processes (or whatever) were found.
-  ;;
-  ;; For example, "grep" and "pgrep" return a *non-zero* exit code
-  ;; when they do not find any matching lines or processes.
+(defn- watch-exec
+  "Execute watch and apply exit state of watch to all defined tasks.
+
+  Return a map containing the watch's name and a Boolean value for
+  every defined task (*true* if exit state was *non-zero*).  In case
+  a watch is not enabled or has not been assigned to a given task,
+  set exit state to nil.
+
+  Background information: energy saving is enabled when a watch is
+  enabled and the respective shell command failed (returned a
+  *non-zero* exit code), as this means that no interfering
+  processes (or whatever) were found.
+
+  For example, 'grep' and 'pgrep' return a *non-zero* exit code when
+  they do not find any matching lines or processes."
+  [[watch-name {:keys [enabled command tasks]}]]
   (let [save-energy? (when enabled
                        (= (shell-exec command false)
                           :failed))]
-    (reduce (fn [m k] (assoc m k (when (get tasks k)
-                                   save-energy?)))
-            {:name name}
+    ;; Apply exit state of watch to all defined tasks (or nil when the
+    ;; watch has not been assigned to the given task).
+    (reduce (fn [exit-states task]
+              (assoc exit-states
+                     task
+                     (when (get tasks task)
+                       save-energy?)))
+            {:watch watch-name}
             defined-tasks)))
 
 
-(defn update-energy-saving [task new-state]
+(defn update-energy-saving
+  "Update the state of a task according to new-state (:enable
+  or :disable) and toggle its energy saving state by executing a
+  command.  Print new state and related information.
+
+  Return exit state of command (as described in shell-exec).
+  "
+  [task new-state]
+  (when (nil? new-state)
+    (throw (IllegalArgumentException.
+             "eeek, a NIL entered \"update-energy-saving\".")))
   (let [timestamp (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
                      format
                      (java.time.LocalTime/now))
+        padding   "          "
+
         prefs     (sp/select-one [:tasks task new-state] preferences)
         command   (sp/select-one [:command] prefs)
         fork?     (sp/select-one [:fork] prefs)
-        message   (sp/select-one [:message] prefs)
-        padding   "          "]
-    (assert (some? new-state) "a NIL entered (update-energy-saving).")
+        message   (sp/select-one [:message] prefs)]
     (when command
       (println)
       (printfln "[%s]  Task:    %s" timestamp (name task))
       (printfln "%s  State:   %s (%s)" padding (name new-state) message)
       (printfln "%s  Command: %s" padding command)
-      ;; execute command
+      ;; execute command (finally)
       (let [exit-state (shell-exec command fork?)]
-        (printfln "%s  Result:  %s" padding (name exit-state))))))
+        (printfln "%s  Result:  %s" padding (name exit-state))
+        exit-state))))
 
 
-(defn- enable-disable-or-nil? [coll]
+(defn- enable-disable-or-nil?
+  "Reduce coll to a scalar.
+
+  Return :disable if coll contains a false value.  If it doesn't,
+  return :enable if it contains a true value.  In any other case,
+  return nil."
+  [coll]
   (cond
     ;; disabling energy saving has preference
     (some false? coll) :disable
     (some true? coll) :enable
+    ;; either the watch is disabled or has not been assigned to the
+    ;; current task
     :else nil))
 
 
-(defn update-status [_]
+(defn update-status
+  "Execute all watches and gather states for all defined tasks.  Should
+  a task state differ from its current state, update the state and
+  toggle its energy saving state by executing a command.
+
+  Return new task states, consisting of a map containing keys for all
+  defined tasks with values according to \"enable-disable-or-nil?\"."
+  [_]
   (let [exit-states     (->> (sp/select-one [:watches] preferences)
-                             (map status-shell-exec)
-                             (remove nil?))
-        new-task-states (reduce (fn [m k] (assoc m k (enable-disable-or-nil?
-                                                       (map k exit-states))))
+                             (map watch-exec))
+        new-task-states (reduce (fn [new-ts task]
+                                  (assoc new-ts
+                                         task
+                                         (enable-disable-or-nil?
+                                           (map task exit-states))))
                                 {}
                                 defined-tasks)
         update-task     (fn [task]
@@ -144,20 +197,28 @@
                      new-task-states))))
 
 
-(defn -main
-  [& _]
-  (println)
-  (print-header)
-
-  (chime/chime-at (->> (sp/select-one [:probing-interval] preferences)
-                       (java.time.Duration/ofSeconds)
+(defn- start-scheduler
+  "Execute f immediately, delay by interval and repeat indefinitely.
+  Should the computer become unresponsive or enter energy saving
+  modes, the intermediate scheduled instants will be dropped."
+  [f interval]
+  (chime/chime-at (->> (java.time.Duration/ofSeconds interval)
                        (chime/periodic-seq (java.time.Instant/now)))
                   (fn [timestamp]
-                    (let [actual-epoch (.toEpochMilli (java.time.Instant/now))
-                          target-epoch (.toEpochMilli timestamp)
-                          seconds-late (/ (- actual-epoch target-epoch)
-                                          1000.0)]
-                      ;; skip tasks that were scheduled for instants
-                      ;; that were actually spent in computer Nirvana
-                      (when (< seconds-late (preferences :probing-interval))
-                        (update-status timestamp))))))
+                    (let [actual-millis (.toEpochMilli (java.time.Instant/now))
+                          target-millis (.toEpochMilli timestamp)
+                          seconds-late  (/ (- actual-millis target-millis)
+                                           1000.0)]
+                      ;; skip scheduled instants that were actually
+                      ;; spent in computer Nirvana
+                      (when-not (>= seconds-late interval)
+                        (f timestamp))))))
+
+
+(defn -main
+  "Print information on application and schedule watchers."
+  [& _]
+  (print-header)
+
+  (start-scheduler update-status
+                   (sp/select-one [:probing-interval] preferences)))

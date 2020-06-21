@@ -6,27 +6,28 @@ MoccaFaux can be used to prevent the activation of screen savers and
 power-saving modes when certain conditions are met.  It was inspired
 by [caffeine], but is much more flexible.
 
-In fact, MoccaFaux is a scheduler that executes commands, records
-their exit code and executes other commands depending on these exit
-codes:
+In fact, MoccaFaux is a scheduler that executes commands, looks at
+their exit codes and then decides whether to execute different
+commands:
 
-1. execute commands and record their exit code (the commands as well
-   as their number are user-defined)
+1. execute commands (called *watches*) and record their exit code
 
-1. assign exit codes to user-defined tasks (such as `:control-dpms`,
-   again user-defined)
+1. assign the exit code of each *watch* to user-defined *tasks* (such
+   as `:let-there-be-light` or `:i-cant-get-no-sleep`).
 
-1. for each task, check whether any of the executed commands had a
-   **zero exit code**
+1. for each *task*, check whether any of the executed commands had a
+   *non-zero* exit code
 
-1. in case the result of a task differs from the last run, execute a
-   command depending on the result (you probably guessed it, commands
-   are user-defined)
+1. in case the new state of a *task* differs from its current state,
+   execute a command depending on the result
+   
+All *watches*, *tasks* and commands as well as their number can be
+defined by the user.
 
-MoccaFaux is so flexible that it could be used for other tasks, for
-example compiling an application if files in a directory change.  In
-practice, you might be better advised to use dedicated software and
-APIs like [Gulp.watch] and [inotify].
+This makes MoccaFaux so flexible that it could probably be used for
+other tasks as well, such as compiling an application when the files
+in a directory change.  In practice, you might be better off to use
+dedicated software and APIs like [Gulp.watch] and [inotify].
 
 ## The name
 
@@ -52,20 +53,21 @@ cd moccafaux
 lein clean && lein uberjar
 ```
 
-Or simply download a pre-compiled JAR file from the [releases].
+Or simply download a pre-compiled JAR file from the [release] section.
 
 ## Usage
 
 Open a shell and locate to the MoccaFaux directory.  Then execute:
 
 ```bash
-# for MALLOC_ARENA_MAX, see https://issues.apache.org/jira/browse/HADOOP-7154)
+# setting MALLOC_ARENA_MAX bounds virtual memory, see
+# https://issues.apache.org/jira/browse/HADOOP-7154
 MALLOC_ARENA_MAX=4 java -jar ./target/uberjar/moccafaux.jar
 ```
 
 ## Options
 
-*To do done.*
+*To be done.*
 
 For now, copy `config-SAMPLE.json` to
 `$HOME/.config/moccafaux/config.json` and edit to taste.
@@ -95,4 +97,4 @@ Thank you for using free software!
 [Gulp.watch]:         https://gulpjs.com/docs/en/getting-started/watching-files
 
 [Martin Zuther]:  http://www.mzuther.de/
-[releases]:       https://github.com/mzuther/moccafaux/releases
+[release]:        https://github.com/mzuther/moccafaux/releases
