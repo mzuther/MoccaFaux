@@ -61,27 +61,28 @@
 
 
 (defn- shell-exec [command fork?]
-  (let [new-process (popen/popen ["sh" "-c" command ])]
-    (if fork?
+  (let [new-process (popen/popen ["sh" "-c" command])]
+    (if-not fork?
+      (if (zero? (popen/exit-code new-process))
+        :success
+        :failed)
       (do
         ;; wait for 10 ms to check whether the process is actually
         ;; created and running
         (Thread/sleep 10)
         (if (popen/running? new-process)
-          -1
-          1))
-      (popen/exit-code new-process))))
+          :forked
+          :failed)))))
 
 
 (defn- status-shell-exec [[name {:keys [enabled command tasks]}]]
-  ;; enable energy saving when the shell command returns a *non-zero*
-  ;; exit code, as this means that no interfering processes were found
-  ;; (for example, "grep" and "pgrep" return a *zero* exit code when
-  ;; they find matching lines or processes)
+  ;; enable energy saving when the shell command failed (returned a
+  ;; non-zero exit code), as this means that no interfering processes
+  ;; were found; for example, "grep" and "pgrep" return a non-zero
+  ;; exit code when they do not find matching lines or processes
   (let [save-energy? (when enabled
                        (-> (shell-exec command false)
-                           zero?
-                           not))]
+                           (= :failed)))]
     {:name          name
      :disable-sleep (when (:sleep tasks)
                       save-energy?)
@@ -106,14 +107,8 @@
       (printfln "%s  State:   %s (%s)" padding (name new-state) message)
       (printfln "%s  Command: %s" padding command)
       ;; execute command
-      (let [exit-code (shell-exec command fork?)]
-        (printfln "%s  Result:  %s"
-                  padding
-                  (condp = exit-code
-                    0  "success"
-                    -1 "forked"
-                    "failed"))
-        exit-code))))
+      (let [exit-state (shell-exec command fork?)]
+        (printfln "%s  Result:  %s" padding (name exit-state))))))
 
 
 (defn- enable-disable-or-nil? [coll]
