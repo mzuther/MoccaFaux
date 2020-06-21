@@ -67,7 +67,7 @@ MALLOC_ARENA_MAX=4 java -jar ./target/uberjar/moccafaux.jar
 
 *To do done.*
 
-For now, copy `config-MOVE-ME.json` to
+For now, copy `config-SAMPLE.json` to
 `$HOME/.config/moccafaux/config.json` and edit to taste.
 
 ## License
