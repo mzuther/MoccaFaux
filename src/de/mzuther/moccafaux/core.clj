@@ -43,7 +43,7 @@
 
 
 ;; empty ref forces an update on first call to "update-status"
-(def task-state (ref {}))
+(def task-states (ref {}))
 
 
 (def preferences
@@ -61,6 +61,12 @@
          (newline)
          (flush)
          (System/exit 1))))
+
+
+(def defined-tasks
+  (->> preferences
+       (sp/select [:tasks sp/MAP-KEYS])
+       sort))
 
 
 (defn- shell-exec [command fork?]
@@ -86,18 +92,16 @@
   (let [save-energy? (when enabled
                        (-> (shell-exec command false)
                            (= :failed)))]
-    {:name          name
-     :disable-sleep (when (:sleep tasks)
-                      save-energy?)
-     :disable-dpms  (when (:dpms tasks)
-                      save-energy?)}))
+    (reduce (fn [m k] (assoc m k (when (get tasks k)
+                                   save-energy?)))
+            {:name name}
+            defined-tasks)))
 
 
-(defn update-energy-saving [task]
+(defn update-energy-saving [task new-state]
   (let [timestamp (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
                      format
                      (java.time.LocalTime/now))
-        new-state (sp/select-one [task] @task-state)
         prefs     (sp/select-one [:tasks task new-state] preferences)
         command   (sp/select-one [:command] prefs)
         fork?     (sp/select-one [:fork] prefs)
@@ -123,24 +127,22 @@
 
 
 (defn update-status [_]
-  (let [results        (->> (sp/select-one [:watches] preferences)
-                            (map status-shell-exec)
-                            (remove nil?))
-        new-task-state {:sleep (enable-disable-or-nil?
-                                 (map :disable-sleep results))
-                        :dpms  (enable-disable-or-nil?
-                                 (map :disable-dpms results))}
-        sleep-updated? (not= (sp/select-one [:sleep] @task-state)
-                             (sp/select-one [:sleep] new-task-state))
-        dpms-updated?  (not= (sp/select-one [:dpms] @task-state)
-                             (sp/select-one [:dpms] new-task-state))]
-    (dosync
-      (ref-set task-state new-task-state))
-    (when sleep-updated?
-      (update-energy-saving :sleep))
-    (when dpms-updated?
-      (update-energy-saving :dpms))
-    new-task-state))
+  (let [exit-states     (->> (sp/select-one [:watches] preferences)
+                             (map status-shell-exec)
+                             (remove nil?))
+        new-task-states (reduce (fn [m k] (assoc m k (enable-disable-or-nil?
+                                                       (map k exit-states))))
+                                {}
+                                defined-tasks)
+        update-task     (fn [task]
+                          (let [new-state (sp/select-one [task] new-task-states)
+                                old-state (sp/select-one [task] @task-states)]
+                            (when-not (= new-state old-state)
+                              (update-energy-saving task new-state))))]
+    (doseq [task defined-tasks]
+      (update-task task))
+    (dosync (ref-set task-states
+                     new-task-states))))
 
 
 (defn -main

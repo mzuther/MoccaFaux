@@ -1,6 +1,34 @@
 {
   "probing-interval": 60,
 
+  "tasks": {
+    "sleep": {
+      "enable": {
+        "message": "allow computer to save energy",
+        "command": "xautolock -time 15 -locker 'systemctl suspend' -detectsleep",
+        "fork":    true
+      },
+      "disable": {
+        "message": "keep computer awake",
+        "command": "xautolock -exit",
+        "fork":    false
+      }
+    },
+
+    "dpms": {
+      "enable": {
+        "message": "allow screen to save energy",
+        "command": "xset dpms 300 600 900",
+        "fork":    false
+      },
+      "disable": {
+        "message": "keep screen awake",
+        "command": "xset -dpms",
+        "fork":    false
+      }
+    }
+  },
+
   "watches": {
     "important-processes":
     {
@@ -40,34 +68,6 @@
 
       "tasks": {
         "sleep": true
-      }
-    }
-  },
-
-  "tasks": {
-    "sleep": {
-      "enable": {
-        "message": "allow computer to save energy",
-        "command": "xautolock -time 15 -locker 'systemctl suspend' -detectsleep",
-        "fork":    true
-      },
-      "disable": {
-        "message": "keep computer awake",
-        "command": "xautolock -exit",
-        "fork":    false
-      }
-    },
-
-    "dpms": {
-      "enable": {
-        "message": "allow screen to save energy",
-        "command": "xset dpms 300 600 900",
-        "fork":    false
-      },
-      "disable": {
-        "message": "keep screen awake",
-        "command": "xset -dpms",
-        "fork":    false
       }
     }
   }
