@@ -1,9 +1,9 @@
 {
   "probing-interval": 60,
 
-  "monitor": [
+  "watches": {
+    "important-processes":
     {
-      "name":    "important-processes",
       "enabled": true,
       "command": "pgrep -af '^dpkg\\b|^pacman\\b|^dar\\s|^/\\S*rsync\\b|^ssh\\s|^unison\\S*'",
 
@@ -12,8 +12,8 @@
       }
     },
 
+    "audio":
     {
-      "name":     "audio",
       "enabled":  true,
       "command":  "pactl list short sinks | grep -E '\\bRUNNING$'",
 
@@ -22,8 +22,8 @@
       }
     },
 
+    "video":
     {
-      "name":     "video",
       "enabled":  true,
       "command":  "pgrep -l '^(celluloid|skypeforlinux|vlc)$'",
 
@@ -33,8 +33,8 @@
       }
     },
 
+    "zfs-scrub":
     {
-      "name":     "zfs-scrub",
       "enabled":  true,
       "command":  "zpool status | grep -E '(resilver|scrub) in progress'",
 
@@ -42,25 +42,33 @@
         "sleep": true
       }
     }
-  ],
-
-  "sleep-enable-cmd": {
-    "command": "xautolock -time 15 -locker \"systemctl suspend\" -detectsleep",
-    "fork":    true
   },
 
-  "sleep-disable-cmd": {
-    "command": "xautolock -exit",
-    "fork":    false
-  },
+  "tasks": {
+    "sleep": {
+      "enable": {
+        "message": "allow computer to save energy",
+        "command": "xautolock -time 15 -locker \"systemctl suspend\" -detectsleep",
+        "fork":    true
+      },
+      "disable": {
+        "message": "keep computer awake",
+        "command": "xautolock -exit",
+        "fork":    false
+      }
+    },
 
-  "dpms-enable-cmd": {
-    "command": "xset dpms 300 600 900",
-    "fork":    false
-  },
-
-  "dpms-disable-cmd": {
-    "command": "xset -dpms",
-    "fork":    false
+    "dpms": {
+      "enable": {
+        "message": "allow screen to save energy",
+        "command": "xset dpms 300 600 900",
+        "fork":    false
+      },
+      "disable": {
+        "message": "keep screen awake",
+        "command": "xset -dpms",
+        "fork":    false
+      }
+    }
   }
 }

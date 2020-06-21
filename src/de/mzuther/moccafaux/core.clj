@@ -37,33 +37,27 @@
     (println full-line)))
 
 
-(def default-settings {:probing-interval  60,
-                       :monitor           [],
-
-                       :sleep-enable-cmd  nil,
-                       :sleep-disable-cmd nil,
-
-                       :dpms-enable-cmd   nil,
-                       :dpms-disable-cmd  nil})
+(def default-preferences {:probing-interval 60,
+                          :watches          [],
+                          :tasks            {}})
 
 
-;; force update on first call to "update-status"
-(def status (ref {:sleep-keep-awake nil
-                  :dpms-keep-awake  nil}))
+;; empty ref forces an update on first call to "update-status"
+(def status (ref {}))
 
 
-(def settings
-  (let [file-name     (io/file (System/getProperty "user.home")
-                               ".config" "moccafaux" "config.json")
-        user-settings (try (json/read-str (slurp file-name)
-                                          :key-fn keyword)
-                           (catch Exception e
-                             (newline)
-                             (printfln "WARNING: could not open \"%s\":"
-                                       file-name)
-                             (println "        " (.getMessage e))))]
-    (merge default-settings
-           user-settings)))
+(def preferences
+  (let [file-name        (io/file (System/getProperty "user.home")
+                                  ".config" "moccafaux" "config.json")
+        user-preferences (try (json/read-str (slurp file-name)
+                                             :key-fn keyword)
+                              (catch Exception e
+                                (newline)
+                                (printfln "WARNING: could not open \"%s\":"
+                                          file-name)
+                                (println "        " (.getMessage e))))]
+    (merge default-preferences
+           user-preferences)))
 
 
 (defn- shell-exec [command fork?]
@@ -79,8 +73,7 @@
       (popen/exit-code new-process))))
 
 
-(defn- status-shell-exec [{:keys [name enabled command
-                                  tasks]}]
+(defn- status-shell-exec [[name {:keys [enabled command tasks]}]]
   ;; enable energy saving when the shell command returns a *non-zero*
   ;; exit code, as this means that no interfering processes were found
   ;; (for example, "grep" and "pgrep" return a *zero* exit code when
@@ -94,30 +87,19 @@
                       enable-energy-saving?)}))
 
 
-(defn update-energy-saving [section]
-  (let [messages    {:sleep-enable-cmd  "allow computer to save energy"
-                     :sleep-disable-cmd "keep computer awake"
-                     :dpms-enable-cmd   "allow screen to save energy"
-                     :dpms-disable-cmd  "keep screen awake"}
-        timestamp   (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
-                       format
-                       (java.time.LocalTime/now))
-
-        awake-key   (keyword (str (name section)
-                                  "-keep-awake"))
-        keep-awake  (sp/select-one [awake-key] @status)
-
-        command-key (keyword (str (name section)
-                                  (if keep-awake "-disable-cmd" "-enable-cmd")))
-        command     (sp/select-one [command-key :command] settings)
-        fork?       (sp/select-one [command-key :fork] settings)]
+(defn update-energy-saving [task]
+  (let [timestamp  (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
+                      format
+                      (java.time.LocalTime/now))
+        keep-awake (if (sp/select-one [task] @status) :disable :enable)
+        prefs      (sp/select-one [:tasks task keep-awake] preferences)
+        command    (sp/select-one [:command] prefs)
+        fork?      (sp/select-one [:fork] prefs)
+        message    (sp/select-one [:message] prefs)]
     (when command
       (println)
-      (printfln "[%s]  Change:  %s"
-                timestamp
-                (sp/select-one [command-key] messages))
-      (printfln "            Command: %s"
-                command)
+      (printfln "[%s]  Change:  %s" timestamp message)
+      (printfln "            Command: %s" command)
       (let [exit-code (shell-exec command fork?)]
         (printfln "            Result:  %s"
                   (condp = exit-code
@@ -135,17 +117,17 @@
 
 
 (defn update-status [_]
-  (let [results        (->> (sp/select-one [:monitor] settings)
+  (let [results        (->> (sp/select-one [:watches] preferences)
                             (map status-shell-exec)
                             (remove nil?))
-        new-status     {:sleep-keep-awake (true-false-or-nil?
-                                            (map :disable-sleep results))
-                        :dpms-keep-awake  (true-false-or-nil?
-                                            (map :disable-dpms results))}
-        sleep-updated? (not= (sp/select-one [:sleep-keep-awake] @status)
-                             (sp/select-one [:sleep-keep-awake] new-status))
-        dpms-updated?  (not= (sp/select-one [:dpms-keep-awake] @status)
-                             (sp/select-one [:dpms-keep-awake] new-status))]
+        new-status     {:sleep (true-false-or-nil?
+                                 (map :disable-sleep results))
+                        :dpms  (true-false-or-nil?
+                                 (map :disable-dpms results))}
+        sleep-updated? (not= (sp/select-one [:sleep] @status)
+                             (sp/select-one [:sleep] new-status))
+        dpms-updated?  (not= (sp/select-one [:dpms] @status)
+                             (sp/select-one [:dpms] new-status))]
     (dosync
       (ref-set status new-status))
     (when sleep-updated?
@@ -166,7 +148,7 @@
                format
                (java.time.LocalTime/now)))
 
-  (chime/chime-at (->> (sp/select-one [:probing-interval] settings)
+  (chime/chime-at (->> (sp/select-one [:probing-interval] preferences)
                        (java.time.Duration/ofSeconds)
                        (chime/periodic-seq (java.time.Instant/now))
                        (rest))
@@ -177,5 +159,5 @@
                                           1000.0)]
                       ;; skip tasks that were scheduled for instants
                       ;; that were actually spent in computer Nirvana
-                      (when (< seconds-late (settings :probing-interval))
+                      (when (< seconds-late (preferences :probing-interval))
                         (update-status timestamp))))))
