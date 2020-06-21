@@ -43,7 +43,7 @@
 
 
 ;; empty ref forces an update on first call to "update-status"
-(def status (ref {}))
+(def task-state (ref {}))
 
 
 (def preferences
@@ -78,30 +78,37 @@
   ;; exit code, as this means that no interfering processes were found
   ;; (for example, "grep" and "pgrep" return a *zero* exit code when
   ;; they find matching lines or processes)
-  (let [enable-energy-saving? (when enabled
-                                (zero? (shell-exec command false)))]
+  (let [save-energy? (when enabled
+                       (-> (shell-exec command false)
+                           zero?
+                           not))]
     {:name          name
      :disable-sleep (when (:sleep tasks)
-                      enable-energy-saving?)
+                      save-energy?)
      :disable-dpms  (when (:dpms tasks)
-                      enable-energy-saving?)}))
+                      save-energy?)}))
 
 
 (defn update-energy-saving [task]
-  (let [timestamp  (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
-                      format
-                      (java.time.LocalTime/now))
-        keep-awake (if (sp/select-one [task] @status) :disable :enable)
-        prefs      (sp/select-one [:tasks task keep-awake] preferences)
-        command    (sp/select-one [:command] prefs)
-        fork?      (sp/select-one [:fork] prefs)
-        message    (sp/select-one [:message] prefs)]
+  (let [timestamp (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
+                     format
+                     (java.time.LocalTime/now))
+        new-state (sp/select-one [task] @task-state)
+        prefs     (sp/select-one [:tasks task new-state] preferences)
+        command   (sp/select-one [:command] prefs)
+        fork?     (sp/select-one [:fork] prefs)
+        message   (sp/select-one [:message] prefs)
+        padding   "          "]
+    (assert (some? new-state) "a NIL entered (update-energy-saving).")
     (when command
       (println)
-      (printfln "[%s]  Change:  %s" timestamp message)
-      (printfln "            Command: %s" command)
+      (printfln "[%s]  Task:    %s" timestamp (name task))
+      (printfln "%s  State:   %s (%s)" padding (name new-state) message)
+      (printfln "%s  Command: %s" padding command)
+      ;; execute command
       (let [exit-code (shell-exec command fork?)]
-        (printfln "            Result:  %s"
+        (printfln "%s  Result:  %s"
+                  padding
                   (condp = exit-code
                     0  "success"
                     -1 "forked"
@@ -109,10 +116,11 @@
         exit-code))))
 
 
-(defn- true-false-or-nil? [coll]
+(defn- enable-disable-or-nil? [coll]
   (cond
-    (some true? coll) true
-    (some false? coll) false
+    ;; disabling energy saving has preference
+    (some false? coll) :disable
+    (some true? coll) :enable
     :else nil))
 
 
@@ -120,21 +128,21 @@
   (let [results        (->> (sp/select-one [:watches] preferences)
                             (map status-shell-exec)
                             (remove nil?))
-        new-status     {:sleep (true-false-or-nil?
+        new-task-state {:sleep (enable-disable-or-nil?
                                  (map :disable-sleep results))
-                        :dpms  (true-false-or-nil?
+                        :dpms  (enable-disable-or-nil?
                                  (map :disable-dpms results))}
-        sleep-updated? (not= (sp/select-one [:sleep] @status)
-                             (sp/select-one [:sleep] new-status))
-        dpms-updated?  (not= (sp/select-one [:dpms] @status)
-                             (sp/select-one [:dpms] new-status))]
+        sleep-updated? (not= (sp/select-one [:sleep] @task-state)
+                             (sp/select-one [:sleep] new-task-state))
+        dpms-updated?  (not= (sp/select-one [:dpms] @task-state)
+                             (sp/select-one [:dpms] new-task-state))]
     (dosync
-      (ref-set status new-status))
+      (ref-set task-state new-task-state))
     (when sleep-updated?
       (update-energy-saving :sleep))
     (when dpms-updated?
       (update-energy-saving :dpms))
-    new-status))
+    new-task-state))
 
 
 (defn -main
