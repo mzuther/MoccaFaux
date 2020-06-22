@@ -132,7 +132,7 @@
   [task new-state]
   (when (nil? new-state)
     (throw (IllegalArgumentException.
-             "eeek, a NIL entered \"update-energy-saving\".")))
+             "eeek, a NIL entered \"update-energy-saving\"")))
   (let [timestamp (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
                      format
                      (java.time.LocalTime/now))
@@ -212,7 +212,9 @@
                       ;; skip scheduled instants that were actually
                       ;; spent in computer Nirvana
                       (when-not (>= seconds-late interval)
-                        (f timestamp))))))
+                        (f timestamp))))
+                  ;; display exception and kill scheduler
+                  {:error-handler (fn [e] (println (str e)))}))
 
 
 (defn -main
