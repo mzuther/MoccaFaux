@@ -40,21 +40,33 @@
 (def task-states (ref {}))
 
 
+(def page-width 80)
+
+
 (defn- printfln
   "Print formatted output, as per format, followed by (newline)."
   [fmt & args]
   (println (apply format fmt args)))
 
 
+(defn- fill-string
+  "Create a string by n repetitions of ch.
+
+  Return this string."
+  [n ch]
+  (->> ch
+       (repeat n)
+       (apply str)))
+
+
 (defn- print-header
   "Print a nicely formatted header with application name and version number."
   []
-  (let [fill-string  (fn [length char] (->> char (repeat length) (apply str)))
-        add-borders  (fn [s char] (string/join [char s char]))
+  (let [add-borders  (fn [s char] (string/join [char s char]))
 
         header       (str "MoccaFaux v" (version/get-version "de.mzuther" "moccafaux.core"))
 
-        page-width   78
+        page-width   (- page-width 2)
         header-width (count header)
         left-margin  (quot (- page-width header-width) 2)
         right-margin (- page-width header-width left-margin)
@@ -192,13 +204,17 @@
                                            (map task exit-states))))
                                 {}
                                 defined-tasks)
+        update-needed?  (not= new-task-states @task-states)
         update-task     (fn [task]
                           (let [new-state (sp/select-one [task] new-task-states)
                                 old-state (sp/select-one [task] @task-states)]
-                            (when-not (= new-state old-state)
+                            (when (not= new-state old-state)
                               (update-energy-saving task new-state))))]
     (doseq [task defined-tasks]
       (update-task task))
+    (when update-needed?
+      (newline)
+      (println (fill-string page-width \-)))
     (dosync (ref-set task-states
                      new-task-states))))
 
