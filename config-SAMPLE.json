@@ -30,8 +30,7 @@
   },
 
   "watches": {
-    "important-processes":
-    {
+    "important-processes": {
       "enabled": true,
       "command": "pgrep -af '^dpkg\\b|^pacman\\b|^dar\\s|^/\\S*rsync\\b|^ssh(d:)?\\s|^unison\\S*'",
 
@@ -40,8 +39,7 @@
       }
     },
 
-    "audio":
-    {
+    "audio": {
       "enabled":  true,
       "command":  "pactl list short sinks | grep -E '\\bRUNNING$'",
 
@@ -50,8 +48,7 @@
       }
     },
 
-    "video":
-    {
+    "video": {
       "enabled":  true,
       "command":  "pgrep -l '^(celluloid|skypeforlinux|vlc)$'",
 
@@ -61,8 +58,7 @@
       }
     },
 
-    "zfs-scrub":
-    {
+    "zfs-scrub": {
       "enabled":  true,
       "command":  "zpool status | grep -E '(resilver|scrub) in progress'",
 

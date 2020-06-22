@@ -67,10 +67,80 @@ MALLOC_ARENA_MAX=4 java -jar ./target/uberjar/moccafaux.jar
 
 ## Options
 
-*To be done.*
+MoccaFaux reads its settings from the file
+`$HOME/.config/moccafaux/config.json`.  As the name suggests, the
+settings are expected to be in standard JSON format.
 
-For now, copy `config-SAMPLE.json` to
-`$HOME/.config/moccafaux/config.json` and edit to taste.
+The settings file constitutes of a map with three key-value pairs (I
+don't like the JSON terms, so I'll use their Clojure equivalents
+instead):
+
+```javascript
+{
+  "probing-interval": 60,
+  "tasks": {
+    // ...
+  },
+  "watches": {
+    // ...
+  },
+}
+```
+
+I suggest that you restrict key names to ASCII characters, hyphens and
+numbers.  First of all, that looks more LISP-like and let's you feel
+like a geek.  Also, and slightly more important, it might prevent
+problems during conversion to Clojure/Java data.  You have been
+warned.
+
+`probing-interval` sets the number of seconds between repeating the
+watches.  This is not restricted in any way, so if you set it to one
+second, all watches will be checked once a second.  Let's just hope
+that your computer can keep up with this ...
+
+I have found the default of 60 seconds to be a good trade-off between
+resource usage and response time.  As a side note, the scheduler's
+timing may drift and repetitions will be dropped when the computer is
+suspended or under extremely high load – so don't use MoccaFaux when
+your main concerns are high reliability or repeatability.
+
+```javascript
+  "tasks": {
+    "sleep": {
+      "enable": {
+        "message": "allow computer to save energy",
+        "command": "xautolock -time 15 -locker 'systemctl suspend' -detectsleep",
+        "fork":    true
+      },
+      "disable": {
+        "message": "keep computer awake",
+        "command": "xautolock -exit",
+        "fork":    false
+      }
+    },
+
+    // ...
+  }
+```
+
+```javascript
+  "watches": {
+    "video": {
+      "enabled":  true,
+      "command":  "pgrep -l '^(celluloid|skypeforlinux|vlc)$'",
+
+      "tasks": {
+        "dpms": true,
+        "sleep": true
+      }
+    },
+
+    // ...
+  }
+```
+
+To get started, you can use a copy of `config-SAMPLE.json` and edit it
+to taste.
 
 ## License
 
