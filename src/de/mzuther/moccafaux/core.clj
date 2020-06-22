@@ -95,10 +95,10 @@
 (defn- watch-exec
   "Execute watch and apply exit state of watch to all defined tasks.
 
-  Return a map containing the watch's name and a Boolean value for
-  every defined task (*true* if exit state was *non-zero*).  In case
-  a watch is not enabled or has not been assigned to a given task,
-  set exit state to nil.
+  Return a map containing the watch's name and an exit state for every
+  defined task (:enabled if exit state was *non-zero*, :disabled if it
+  was *zero*).  In case a watch has not been enabled or to a given
+  task, set exit state to nil.
 
   Background information: energy saving is enabled when a watch is
   enabled and the respective shell command failed (returned a
@@ -109,8 +109,10 @@
   they do not find any matching lines or processes."
   [[watch-name {:keys [enabled command tasks]}]]
   (let [save-energy? (when enabled
-                       (= (shell-exec command false)
-                          :failed))]
+                       (let [exit-state (shell-exec command false)]
+                         (if (= exit-state :failed)
+                           :enable
+                           :disable)))]
     ;; Apply exit state of watch to all defined tasks (or nil when the
     ;; watch has not been assigned to the given task).
     (reduce (fn [exit-states task]
@@ -156,17 +158,21 @@
 (defn- enable-disable-or-nil?
   "Reduce coll to a scalar.
 
-  Return :disable if coll contains a false value.  If it doesn't,
-  return :enable if it contains a true value.  In any other case,
+  Return :disable if coll contains a :disable value.  If it doesn't
+  and contains a non-nil value, return :enable.  In any other case,
   return nil."
   [coll]
-  (cond
-    ;; disabling energy saving has preference
-    (some false? coll) :disable
-    (some true? coll) :enable
-    ;; either the watch is disabled or has not been assigned to the
-    ;; current task
-    :else nil))
+  (let [coll (remove nil? coll)]
+    (cond
+      ;; disabling energy saving has preference
+      (some (partial = :disable) coll)
+        :disable
+      (seq coll)
+        :enable
+      ;; be explicit; either the watch is disabled or has not been
+      ;; assigned to the current task
+      :else
+        nil)))
 
 
 (defn update-status
@@ -202,8 +208,8 @@
   Should the computer become unresponsive or enter energy saving
   modes, the intermediate scheduled instants will be dropped."
   [f interval]
-  (chime/chime-at (->> (java.time.Duration/ofSeconds interval)
-                       (chime/periodic-seq (java.time.Instant/now)))
+  (chime/chime-at (chime/periodic-seq (java.time.Instant/now)
+                                      (java.time.Duration/ofSeconds interval))
                   (fn [timestamp]
                     (let [actual-millis (.toEpochMilli (java.time.Instant/now))
                           target-millis (.toEpochMilli timestamp)
