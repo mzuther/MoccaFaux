@@ -18,6 +18,7 @@
            user-prefs
            (throw (Exception. "JSON error (not handled by library)"))))
        (catch Throwable e
+         (helpers/print-header)
          (newline)
          (println (str e))
          (newline)
