@@ -1,20 +1,19 @@
 (ns de.mzuther.moccafaux.core
-  (:require [clojure.data.json :as json]
+  (:require [de.mzuther.moccafaux.helpers :as helpers]
+            [clojure.data.json :as json]
             [clojure.java.io :as io]
-            [clojure.string :as string]
             [chime.core :as chime]
             [com.rpl.specter :as sp]
-            [popen]
-            [trptcolin.versioneer.core :as version])
+            [popen])
   (:gen-class))
 
 
 (def preferences
   (try (let [;; "io/file" takes care of line separators
-             file-name     (io/file (System/getProperty "user.home")
-                                    ".config" "moccafaux" "config.json")
-             user-prefs    (json/read-str (slurp file-name)
-                                          :key-fn keyword)]
+             file-name  (io/file (System/getProperty "user.home")
+                                 ".config" "moccafaux" "config.json")
+             user-prefs (json/read-str (slurp file-name)
+                                       :key-fn keyword)]
          (if (map? user-prefs)
            user-prefs
            (throw (Exception. "JSON error (not handled by library)"))))
@@ -34,49 +33,6 @@
 
 ;; empty ref forces an update on first call to "update-status"
 (def task-states (ref {}))
-
-
-(def page-width 80)
-
-
-(defn- printfln
-  "Print formatted output, as per format, followed by (newline)."
-  [fmt & args]
-  (println (apply format fmt args)))
-
-
-(defn- fill-string
-  "Create a string by n repetitions of ch.
-
-  Return this string."
-  [n ch]
-  (->> ch
-       (repeat n)
-       (apply str)))
-
-
-(defn- print-header
-  "Print a nicely formatted header with application name and version number."
-  []
-  (let [add-borders  (fn [s char] (string/join [char s char]))
-
-        header       (str "MoccaFaux v" (version/get-version "de.mzuther" "moccafaux.core"))
-
-        page-width   (- page-width 2)
-        header-width (count header)
-        left-margin  (quot (- page-width header-width) 2)
-        right-margin (- page-width header-width left-margin)
-
-        full-line    (add-borders (fill-string page-width "-") "o")
-        full-header  (add-borders
-                       (string/join [(fill-string left-margin " ")
-                                     header
-                                     (fill-string right-margin " ")])
-                       "|")]
-    (println)
-    (println full-line)
-    (println full-header)
-    (println full-line)))
 
 
 (defn- shell-exec
@@ -154,12 +110,12 @@
         message   (sp/select-one [:message] prefs)]
     (when command
       (println)
-      (printfln "[%s]  Task:    %s" timestamp (name task))
-      (printfln "%s  State:   %s (%s)" padding (name new-state) message)
-      (printfln "%s  Command: %s" padding command)
+      (helpers/printfln "[%s]  Task:    %s" timestamp (name task))
+      (helpers/printfln "%s  State:   %s (%s)" padding (name new-state) message)
+      (helpers/printfln "%s  Command: %s" padding command)
       ;; execute command (finally)
       (let [exit-state (shell-exec command fork?)]
-        (printfln "%s  Result:  %s" padding (name exit-state))
+        (helpers/printfln "%s  Result:  %s" padding (name exit-state))
         exit-state))))
 
 
@@ -210,7 +166,7 @@
       (update-task task))
     (when update-needed?
       (newline)
-      (println (fill-string page-width \-)))
+      (helpers/print-line \-))
     (dosync (ref-set task-states
                      new-task-states))))
 
@@ -238,7 +194,7 @@
 (defn -main
   "Print information on application and schedule watchers."
   [& _]
-  (print-header)
+  (helpers/print-header)
 
   (start-scheduler update-status
                    (sp/select-one [:scheduler :probing-interval] preferences)))
