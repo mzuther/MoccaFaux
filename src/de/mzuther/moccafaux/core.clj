@@ -14,14 +14,10 @@
              file-name     (io/file (System/getProperty "user.home")
                                     ".config" "moccafaux" "config.json")
              user-prefs    (json/read-str (slurp file-name)
-                                          :key-fn keyword)
-             default-prefs {:probing-interval 60,
-                            :watches          {},
-                            :tasks            {}}]
-         (when-not (map? user-prefs)
-           (throw (Exception. "JSON error (not handled by library)")))
-         (merge default-prefs
-                user-prefs))
+                                          :key-fn keyword)]
+         (if (map? user-prefs)
+           user-prefs
+           (throw (Exception. "JSON error (not handled by library)"))))
        (catch Throwable e
          (newline)
          (println (str e))
