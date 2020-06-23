@@ -4,8 +4,37 @@
 file. This change log follows the conventions of
 [keepachangelog.com].*
 
+
 ## [Unreleased]
 ### Changed
+
+
+
+## [1.1.0] - 2020-06-23
+### Added
+
+* let users define tasks and do not limit the number of tasks
+
+* add complete documentation
+
+* display an error message if the settings file cannot be opened or is
+  broken
+
+### Changed
+
+* completely change the structure of the settings file
+
+* do not skip the first state update when MoccaFaux is started
+
+* drop the default settings
+
+* rename the sample settings file
+
+## Fixed
+
+* kill the scheduler and end MoccaFaux if an exception is thrown
+
+
 
 ## [1.0.0] - 2020-06-20
 ### Changed
@@ -17,3 +46,4 @@ file. This change log follows the conventions of
 [Unreleased]:          https://github.com/mzuther/moccafaux/tree/develop
 
 [1.0.0]:  https://github.com/mzuther/moccafaux/commits/v1.0.0
+[1.1.0]:  https://github.com/mzuther/moccafaux/commits/v1.1.0
