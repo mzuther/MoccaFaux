@@ -15,8 +15,8 @@ commands:
 1. assign the exit code of each *watch* to user-defined *tasks* (such
    as `:let-there-be-light` or `:i-cant-get-no-sleep`).
 
-1. for each *task*, check whether any of the executed commands had a
-   *non-zero* exit code
+1. for each *task*, check whether any of the assigned *watch* commands
+   returned a *non-zero* exit code
 
 1. in case the new state of a *task* differs from its current state,
    execute a command depending on the result
@@ -28,6 +28,11 @@ This makes MoccaFaux so flexible that it could probably be used for
 other tasks as well, such as compiling an application when the files
 in a directory change.  In practice, you might be better off to use
 dedicated software and APIs like [Gulp.watch] and [inotify].
+
+*Please note that the scheduler's timing may drift and repetitions
+will be dropped when the computer is suspended or under extremely high
+load – so don't use MoccaFaux when your main concerns are high
+reliability or repeatability.*
 
 ## The name
 
@@ -71,6 +76,11 @@ MoccaFaux reads its settings from the file
 `$HOME/.config/moccafaux/config.json`.  As the name suggests, the
 settings are expected to be in standard JSON format.
 
+*To get started, use a copy of `config-SAMPLE.json` (found in the root
+directory) and edit it to taste.*
+
+### General structure
+
 The settings file constitutes of a map with three key-value pairs (I
 don't like the JSON terms, so I'll use their Clojure equivalents
 instead):
@@ -97,16 +107,25 @@ like a geek.  Also, and slightly more important, it might prevent
 problems during conversion to Clojure/Java data.  You have been
 warned.
 
-`probing-interval` sets the number of seconds between repeating the
-watches.  This is not restricted in any way, so if you set it to one
-second, all watches will be checked once a second.  Let's just hope
-that your computer can keep up with this ...
+### Scheduler
 
-I have found the default of 60 seconds to be a good trade-off between
-resource usage and response time.  As a side note, the scheduler's
-timing may drift and repetitions will be dropped when the computer is
-suspended or under extremely high load – so don't use MoccaFaux when
-your main concerns are high reliability or repeatability.
+#### `probing-interval`
+
+Sets the number of seconds between repeating the watches.  I have
+found 60 seconds to be a good trade-off between resource usage and
+response time.  But the interval is not restricted in any way, so if
+you set it to one second, all watches will be checked once a second.
+Let's just hope that your computer can keep up with this ...
+
+### Tasks
+
+For something to actually happen, you have to define at least one
+task.  Tasks are basically switches that are turned on and off by
+MoccaFaux.
+
+They are defined by a map with two keys (`enable` and `:isable`),
+which in turn consist of maps containing three keys (`message`,
+`command` and `fork`):
 
 ```javascript
   "tasks": {
@@ -127,6 +146,43 @@ your main concerns are high reliability or repeatability.
   }
 ```
 
+#### `enable` and `disable`
+
+When any of the assigned *watch* commands returns a *non-zero* exit
+code, the command defined under `enable` is executed .  Otherwise, the
+command defined under `disable` is executed.
+
+#### `command`
+
+`command` is the actual command and is executed in a shell environment
+compatible to the Bourne shell (`sh -c "your | commands && come ;
+here"`).  This way, you can use your beloved pipes and logical tests.
+
+*Note: backslashes have to be quoted by doubling (`\\`).*
+
+#### `fork`
+
+Set to `true'` if you want the shell executing the command to continue
+running in the background.  This shell will usually be killed if you
+exit MoccaFaux.
+
+#### `message`
+
+Use `message` to describe what is happening in plain text.  It will be
+shown on the command line and may help you with debugging (or
+understanding the JSON file in a year or so).
+
+*When you start MoccaFaux, each task will be executed once according
+to the state of your watches.*
+
+### Watches
+
+These are the commands that are run periodically.  When their exit
+code changes, they can trigger the toggling of a task.
+
+Watches are defined by a map which contains three keys (`enabled`,
+`command` and `tasks`):
+
 ```javascript
   "watches": {
     "video": {
@@ -143,8 +199,23 @@ your main concerns are high reliability or repeatability.
   }
 ```
 
-To get started, you can use a copy of `config-SAMPLE.json` and edit it
-to taste.
+#### `enable`
+
+Set to `false ` if you do not want the watch to be executed.  Use this
+if you only need it occasionally or want to keep your time-proven
+settings where you might need them in the future.
+
+#### `command`
+
+`command` is identical to its twin in *tasks* except that it cannot be
+forked.
+
+#### `tasks`
+
+Map of tasks that should be updated when the state of this watch
+changes (when set to `true`).  To keep a clear perspective, you can
+also set a task to `false`.  This is completely identical to not
+listing it here.
 
 ## License
 
