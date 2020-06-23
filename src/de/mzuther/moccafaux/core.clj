@@ -241,4 +241,4 @@
   (print-header)
 
   (start-scheduler update-status
-                   (sp/select-one [:probing-interval] preferences)))
+                   (sp/select-one [:scheduler :probing-interval] preferences)))

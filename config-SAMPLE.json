@@ -1,5 +1,7 @@
 {
-  "probing-interval": 60,
+  "scheduler": {
+    "probing-interval": 60
+  },
 
   "tasks": {
     "sleep": {

@@ -20,7 +20,7 @@ commands:
 
 1. in case the new state of a *task* differs from its current state,
    execute a command depending on the result
-   
+
 All *watches*, *tasks* and commands as well as their number can be
 defined by the user.
 
@@ -77,10 +77,14 @@ instead):
 
 ```javascript
 {
-  "probing-interval": 60,
+  "scheduler": {
+    "probing-interval": 60
+  },
+
   "tasks": {
     // ...
   },
+
   "watches": {
     // ...
   },
