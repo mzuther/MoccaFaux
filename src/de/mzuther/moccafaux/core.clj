@@ -1,158 +1,244 @@
 (ns de.mzuther.moccafaux.core
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]
+            [clojure.string :as string]
             [chime.core :as chime]
+            [com.rpl.specter :as sp]
             [popen]
             [trptcolin.versioneer.core :as version])
   (:gen-class))
 
 
-(defn- printfln [fmt & args]
+(def preferences
+  (try (let [;; "io/file" takes care of line separators
+             file-name     (io/file (System/getProperty "user.home")
+                                    ".config" "moccafaux" "config.json")
+             user-prefs    (json/read-str (slurp file-name)
+                                          :key-fn keyword)]
+         (if (map? user-prefs)
+           user-prefs
+           (throw (Exception. "JSON error (not handled by library)"))))
+       (catch Throwable e
+         (newline)
+         (println (str e))
+         (newline)
+         (flush)
+         (System/exit 1))))
+
+
+(def defined-tasks
+  (->> preferences
+       (sp/select [:tasks sp/MAP-KEYS])
+       sort))
+
+
+;; empty ref forces an update on first call to "update-status"
+(def task-states (ref {}))
+
+
+(def page-width 80)
+
+
+(defn- printfln
+  "Print formatted output, as per format, followed by (newline)."
+  [fmt & args]
   (println (apply format fmt args)))
 
 
-(def default-settings {:probing-interval  60,
-                       :monitor           [],
+(defn- fill-string
+  "Create a string by n repetitions of ch.
 
-                       :sleep-enable-cmd  nil,
-                       :sleep-disable-cmd nil,
-
-                       :dpms-enable-cmd   nil,
-                       :dpms-disable-cmd  nil})
-
-
-;; force update on first call to "update-status"
-(def status (ref {:sleep-keep-awake nil
-                  :dpms-keep-awake  nil}))
+  Return this string."
+  [n ch]
+  (->> ch
+       (repeat n)
+       (apply str)))
 
 
-(def settings
-  (let [file-name     (io/file (System/getProperty "user.home")
-                               ".config" "moccafaux" "config.json")
-        user-settings (try (json/read-str (slurp file-name)
-                                          :key-fn keyword)
-                           (catch Exception _
-                             (newline)
-                             (printfln "WARNING: could not open \"%s\"."
-                                       file-name)))]
-    (merge default-settings
-           user-settings)))
+(defn- print-header
+  "Print a nicely formatted header with application name and version number."
+  []
+  (let [add-borders  (fn [s char] (string/join [char s char]))
+
+        header       (str "MoccaFaux v" (version/get-version "de.mzuther" "moccafaux.core"))
+
+        page-width   (- page-width 2)
+        header-width (count header)
+        left-margin  (quot (- page-width header-width) 2)
+        right-margin (- page-width header-width left-margin)
+
+        full-line    (add-borders (fill-string page-width "-") "o")
+        full-header  (add-borders
+                       (string/join [(fill-string left-margin " ")
+                                     header
+                                     (fill-string right-margin " ")])
+                       "|")]
+    (println)
+    (println full-line)
+    (println full-header)
+    (println full-line)))
 
 
-(defn shell-exec [command fork?]
-  (let [new-process (popen/popen ["sh" "-c" command ])]
-    (if fork?
+(defn- shell-exec
+  "Execute command in a shell compatible to the Bourne shell and
+  fork process if fork? is true.
+
+  Return :forked if command has forked, :success if command has
+  exited with a zero exit code, and :failed in any other case."
+  [command fork?]
+  (let [new-process (popen/popen ["sh" "-c" command])]
+    (if-not fork?
+      (if (zero? (popen/exit-code new-process))
+        :success
+        :failed)
       (do
         ;; wait for 10 ms to check whether the process is actually
         ;; created and running
         (Thread/sleep 10)
         (if (popen/running? new-process)
-          -1
-          1))
-      (popen/exit-code new-process))))
+          :forked
+          :failed)))))
 
 
-(defn status-shell-exec [{:keys [name enabled command
-                                 control-sleep control-dpms]}]
-  ;; enable energy saving when the shell command returns a *non-zero*
-  ;; exit code, as this means that no interfering processes were found
-  ;; (for example, "grep" and "pgrep" return a *zero* exit code when
-  ;; they find matching lines or processes)
-  (let [enable-energy-saving? (when enabled
-                                (zero? (shell-exec command false)))]
-    {:name          name
-     :disable-sleep (when control-sleep
-                      enable-energy-saving?)
-     :disable-dpms  (when control-dpms
-                      enable-energy-saving?)}))
+(defn- watch-exec
+  "Execute watch and apply exit state of watch to all defined tasks.
+
+  Return a map containing the watch's name and an exit state for every
+  defined task (:enabled if exit state was *non-zero*, :disabled if it
+  was *zero*).  In case a watch has not been enabled or to a given
+  task, set exit state to nil.
+
+  Background information: energy saving is enabled when a watch is
+  enabled and the respective shell command failed (returned a
+  *non-zero* exit code), as this means that no interfering
+  processes (or whatever) were found.
+
+  For example, 'grep' and 'pgrep' return a *non-zero* exit code when
+  they do not find any matching lines or processes."
+  [[watch-name {:keys [enabled command tasks]}]]
+  (let [save-energy? (when enabled
+                       (let [exit-state (shell-exec command false)]
+                         (if (= exit-state :failed)
+                           :enable
+                           :disable)))]
+    ;; Apply exit state of watch to all defined tasks (or nil when the
+    ;; watch has not been assigned to the given task).
+    (reduce (fn [exit-states task]
+              (assoc exit-states
+                     task
+                     (when (get tasks task)
+                       save-energy?)))
+            {:watch watch-name}
+            defined-tasks)))
 
 
-(defn update-energy-saving [section]
-  (let [messages  {:sleep-enable-cmd  "allow computer to save energy"
-                   :sleep-disable-cmd "keep computer awake"
-                   :dpms-enable-cmd   "allow screen to save energy"
-                   :dpms-disable-cmd  "keep screen awake"}
-        timestamp (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
+(defn update-energy-saving
+  "Update the state of a task according to new-state (:enable
+  or :disable) and toggle its energy saving state by executing a
+  command.  Print new state and related information.
+
+  Return exit state of command (as described in shell-exec).
+  "
+  [task new-state]
+  (when (nil? new-state)
+    (throw (IllegalArgumentException.
+             "eeek, a NIL entered \"update-energy-saving\"")))
+  (let [timestamp (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
                      format
                      (java.time.LocalTime/now))
+        padding   "          "
 
-        awake-key  (keyword (str (name section)
-                                 "-keep-awake"))
-        keep-awake (get @status awake-key)
-
-        command-key (keyword (str (name section)
-                                  (if keep-awake "-disable-cmd" "-enable-cmd")))
-        command     (get-in settings [command-key :command])
-        fork?       (get-in settings [command-key :fork])]
+        prefs     (sp/select-one [:tasks task new-state] preferences)
+        command   (sp/select-one [:command] prefs)
+        fork?     (sp/select-one [:fork] prefs)
+        message   (sp/select-one [:message] prefs)]
     (when command
       (println)
-      (printfln "[%s]  Change:  %s"
-                timestamp
-                (get messages command-key))
-      (printfln "            Command: %s"
-                command)
-      (let [exit-code (shell-exec command fork?)]
-        (printfln "            Result:  %s"
-                  (condp = exit-code
-                    0  "success"
-                    -1 "forked"
-                    "failed"))
-        exit-code))))
+      (printfln "[%s]  Task:    %s" timestamp (name task))
+      (printfln "%s  State:   %s (%s)" padding (name new-state) message)
+      (printfln "%s  Command: %s" padding command)
+      ;; execute command (finally)
+      (let [exit-state (shell-exec command fork?)]
+        (printfln "%s  Result:  %s" padding (name exit-state))
+        exit-state))))
 
 
-(defn- true-false-or-nil? [coll]
-  (cond
-    (some true? coll) true
-    (some false? coll) false
-    :else nil))
+(defn- enable-disable-or-nil?
+  "Reduce coll to a scalar.
+
+  Return :disable if coll contains a :disable value.  If it doesn't
+  and contains a non-nil value, return :enable.  In any other case,
+  return nil."
+  [coll]
+  (let [coll (remove nil? coll)]
+    (cond
+      ;; disabling energy saving has preference
+      (some (partial = :disable) coll)
+        :disable
+      (seq coll)
+        :enable
+      ;; be explicit; either the watch is disabled or has not been
+      ;; assigned to the current task
+      :else
+        nil)))
 
 
-(defn update-status [_]
-  (let [results        (->> (get settings :monitor)
-                            (map status-shell-exec)
-                            (remove nil?))
-        new-status     {:sleep-keep-awake (true-false-or-nil?
-                                            (map :disable-sleep results))
-                        :dpms-keep-awake  (true-false-or-nil?
-                                            (map :disable-dpms results))}
-        sleep-updated? (not= (get @status    :sleep-keep-awake)
-                             (get new-status :sleep-keep-awake))
-        dpms-updated?  (not= (get @status    :dpms-keep-awake)
-                             (get new-status :dpms-keep-awake))]
-    (dosync
-      (ref-set status new-status))
-    (when sleep-updated?
-      (update-energy-saving :sleep))
-    (when dpms-updated?
-      (update-energy-saving :dpms))
-    new-status))
+(defn update-status
+  "Execute all watches and gather states for all defined tasks.  Should
+  a task state differ from its current state, update the state and
+  toggle its energy saving state by executing a command.
+
+  Return new task states, consisting of a map containing keys for all
+  defined tasks with values according to \"enable-disable-or-nil?\"."
+  [_]
+  (let [exit-states     (->> (sp/select-one [:watches] preferences)
+                             (map watch-exec))
+        new-task-states (reduce (fn [new-ts task]
+                                  (assoc new-ts
+                                         task
+                                         (enable-disable-or-nil?
+                                           (map task exit-states))))
+                                {}
+                                defined-tasks)
+        update-needed?  (not= new-task-states @task-states)
+        update-task     (fn [task]
+                          (let [new-state (sp/select-one [task] new-task-states)
+                                old-state (sp/select-one [task] @task-states)]
+                            (when (not= new-state old-state)
+                              (update-energy-saving task new-state))))]
+    (doseq [task defined-tasks]
+      (update-task task))
+    (when update-needed?
+      (newline)
+      (println (fill-string page-width \-)))
+    (dosync (ref-set task-states
+                     new-task-states))))
+
+
+(defn- start-scheduler
+  "Execute f immediately, delay by interval and repeat indefinitely.
+  Should the computer become unresponsive or enter energy saving
+  modes, the intermediate scheduled instants will be dropped."
+  [f interval]
+  (chime/chime-at (chime/periodic-seq (java.time.Instant/now)
+                                      (java.time.Duration/ofSeconds interval))
+                  (fn [timestamp]
+                    (let [actual-millis (.toEpochMilli (java.time.Instant/now))
+                          target-millis (.toEpochMilli timestamp)
+                          seconds-late  (/ (- actual-millis target-millis)
+                                           1000.0)]
+                      ;; skip scheduled instants that were actually
+                      ;; spent in computer Nirvana
+                      (when-not (>= seconds-late interval)
+                        (f timestamp))))
+                  ;; display exception and kill scheduler
+                  {:error-handler (fn [e] (println (str e)))}))
 
 
 (defn -main
+  "Print information on application and schedule watchers."
   [& _]
-  (println)
-  (println "            o---------------------o")
-  (println "            |   moccafaux"
-           (version/get-version "de.mzuther" "moccafaux.core")
-           "  |")
-  (println "            o---------------------o")
+  (print-header)
 
-  (println)
-  (printfln "[%s]  Skipping one time interval ..."
-            (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
-               format
-               (java.time.LocalTime/now)))
-
-  (chime/chime-at (->> (settings :probing-interval)
-                       (java.time.Duration/ofSeconds)
-                       (chime/periodic-seq (java.time.Instant/now))
-                       (rest))
-                  (fn [timestamp]
-                    (let [actual-epoch (.toEpochMilli (java.time.Instant/now))
-                          target-epoch (.toEpochMilli timestamp)
-                          seconds-late (/ (- actual-epoch target-epoch)
-                                          1000.0)]
-                      ;; skip tasks that were scheduled for instants
-                      ;; that were actually spent in computer Nirvana
-                      (when (< seconds-late (settings :probing-interval))
-                        (update-status timestamp))))))
+  (start-scheduler update-status
+                   (sp/select-one [:scheduler :probing-interval] preferences)))
