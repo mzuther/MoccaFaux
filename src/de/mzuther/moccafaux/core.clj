@@ -120,7 +120,7 @@
         exit-state))))
 
 
-(defn- enable-disable-or-nil?
+(defn enable-disable-or-nil?
   "Reduce coll to a scalar.
 
   Return :disable if coll contains a :disable value.  If it doesn't
