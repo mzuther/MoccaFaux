@@ -40,21 +40,22 @@
   "Execute command in a shell compatible to the Bourne shell and
   fork process if fork? is true.
 
-  Return :forked if command has forked, :success if command has
+  Return a vector of a keyword and the created process object.  The
+  keyword is :forked if command has forked, :success if command has
   exited with a zero exit code, and :failed in any other case."
   [command fork?]
   (let [new-process (popen/popen ["sh" "-c" command])]
     (if-not fork?
       (if (zero? (popen/exit-code new-process))
-        :success
-        :failed)
+        [:success new-process]
+        [:failed new-process])
       (do
         ;; wait for 10 ms to check whether the process is actually
         ;; created and running
         (Thread/sleep 10)
         (if (popen/running? new-process)
-          :forked
-          :failed)))))
+          [:forked new-process]
+          [:failed new-process])))))
 
 
 (defn- watch-exec
@@ -74,7 +75,7 @@
   they do not find any matching lines or processes."
   [[watch-name {:keys [enabled command tasks]}]]
   (let [save-energy? (when enabled
-                       (let [exit-state (shell-exec command false)]
+                       (let [[exit-state _] (shell-exec command false)]
                          (if (= exit-state :failed)
                            :enable
                            :disable)))]
@@ -115,7 +116,7 @@
       (helpers/printfln "%s  State:   %s (%s)" padding (name new-state) message)
       (helpers/printfln "%s  Command: %s" padding command)
       ;; execute command (finally)
-      (let [exit-state (shell-exec command fork?)]
+      (let [[exit-state _] (shell-exec command fork?)]
         (helpers/printfln "%s  Result:  %s" padding (name exit-state))
         exit-state))))
 
