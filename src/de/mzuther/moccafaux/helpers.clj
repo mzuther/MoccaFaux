@@ -4,6 +4,7 @@
 
 
 (def page-width 80)
+(def padding   "          ")
 
 
 (defn printfln
@@ -20,6 +21,16 @@
   (->> ch
        (repeat n)
        (apply str)))
+
+
+(defn get-timestamp
+  "Get current local time.
+
+  Return a string formatted as \"HH:mm:ss\"."
+  []
+  (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
+     format
+     (java.time.LocalTime/now)))
 
 
 (defn add-borders

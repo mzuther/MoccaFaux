@@ -2,6 +2,7 @@
   (:require [de.mzuther.moccafaux.helpers :as helpers]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
+            [clojure.string :as string]
             [chime.core :as chime]
             [com.rpl.specter :as sp]
             [popen])
@@ -101,23 +102,22 @@
   (when (nil? new-state)
     (throw (IllegalArgumentException.
              "eeek, a NIL entered \"update-energy-saving\"")))
-  (let [timestamp (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
-                     format
-                     (java.time.LocalTime/now))
-        padding   "          "
-
-        prefs     (sp/select-one [:tasks task new-state] preferences)
+  (let [prefs     (sp/select-one [:tasks task new-state] preferences)
         command   (sp/select-one [:command] prefs)
         fork?     (sp/select-one [:fork] prefs)
         message   (sp/select-one [:message] prefs)]
     (when command
       (println)
-      (helpers/printfln "[%s]  Task:    %s" timestamp (name task))
-      (helpers/printfln "%s  State:   %s (%s)" padding (name new-state) message)
-      (helpers/printfln "%s  Command: %s" padding command)
+      (helpers/printfln "[%s]  Task:     %s %s"
+                        (helpers/get-timestamp) (name new-state) (name task))
+      (helpers/printfln "%s  State:    %s"
+                        helpers/padding message)
+      (helpers/printfln "%s  Command:  %s"
+                        helpers/padding command)
       ;; execute command (finally)
       (let [[exit-state _] (shell-exec command fork?)]
-        (helpers/printfln "%s  Result:  %s" padding (name exit-state))
+        (helpers/printfln "%s  Result:   %s"
+                          helpers/padding (name exit-state))
         exit-state))))
 
 
@@ -198,5 +198,12 @@
   [& _]
   (helpers/print-header)
 
-  (start-scheduler update-status
-                   (sp/select-one [:scheduler :probing-interval] preferences)))
+  (let [interval  (sp/select-one [:scheduler :probing-interval] preferences)]
+    (println)
+    (helpers/printfln "[%s]  Interval: %s seconds"
+                      (helpers/get-timestamp) interval)
+    (helpers/printfln "%s  Tasks:    %s"
+                      helpers/padding
+                      (string/join ", " (map name defined-tasks)))
+
+    (start-scheduler update-status interval)))
