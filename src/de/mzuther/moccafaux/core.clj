@@ -27,10 +27,20 @@
          (System/exit 1))))
 
 
-(def defined-tasks
+(def task-names
   (->> preferences
        (sp/select [:tasks sp/MAP-KEYS])
        sort))
+
+
+(def defined-watches
+  (->> preferences
+       (sp/select-one [:watches])
+       sort))
+
+
+(def watch-names
+  (sp/select [sp/MAP-KEYS] defined-watches))
 
 
 ;; empty ref forces an update on first call to "update-status"
@@ -88,7 +98,7 @@
                      (when (get tasks task)
                        save-energy?)))
             {:watch watch-name}
-            defined-tasks)))
+            task-names)))
 
 
 (defn update-energy-saving
@@ -108,7 +118,7 @@
         message   (sp/select-one [:message] prefs)]
     (when command
       (println)
-      (helpers/printfln "[%s]  Task:     %s %s"
+      (helpers/printfln "%s  Task:     %s %s"
                         (helpers/get-timestamp) (name new-state) (name task))
       (helpers/printfln "%s  State:    %s"
                         helpers/padding message)
@@ -149,7 +159,7 @@
   Return new task states, consisting of a map containing keys for all
   defined tasks with values according to \"enable-disable-or-nil?\"."
   [_]
-  (let [exit-states     (->> (sp/select-one [:watches] preferences)
+  (let [exit-states     (->> defined-watches
                              (map watch-exec))
         new-task-states (reduce (fn [new-ts task]
                                   (assoc new-ts
@@ -157,14 +167,14 @@
                                          (enable-disable-or-nil?
                                            (map task exit-states))))
                                 {}
-                                defined-tasks)
+                                task-names)
         update-needed?  (not= new-task-states @task-states)
         update-task     (fn [task]
                           (let [new-state (sp/select-one [task] new-task-states)
                                 old-state (sp/select-one [task] @task-states)]
                             (when (not= new-state old-state)
                               (update-energy-saving task new-state))))]
-    (doseq [task defined-tasks]
+    (doseq [task task-names]
       (update-task task))
     (when update-needed?
       (newline)
@@ -200,10 +210,17 @@
 
   (let [interval  (sp/select-one [:scheduler :probing-interval] preferences)]
     (println)
-    (helpers/printfln "[%s]  Interval: %s seconds"
-                      (helpers/get-timestamp) interval)
+    (helpers/printfln "%s  Probe:    every %s seconds"
+                      (helpers/get-timestamp)
+                      interval)
     (helpers/printfln "%s  Tasks:    %s"
                       helpers/padding
-                      (string/join ", " (map name defined-tasks)))
+                      (string/join ", " (map name task-names)))
+    (helpers/printfln "%s  Watches:  %s"
+                      helpers/padding
+                      (string/join ", " (map name watch-names)))
+
+    (newline)
+    (helpers/print-line \-)
 
     (start-scheduler update-status interval)))

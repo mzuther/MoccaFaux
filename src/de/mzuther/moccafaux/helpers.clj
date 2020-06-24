@@ -26,11 +26,11 @@
 (defn get-timestamp
   "Get current local time.
 
-  Return a string formatted as \"HH:mm:ss\"."
+  Return a string formatted as \"[HH:mm:ss]\"."
   []
-  (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
-     format
-     (java.time.LocalTime/now)))
+  (->> (java.time.LocalTime/now)
+       (.format (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss"))
+       (format "[%s]")))
 
 
 (defn add-borders
