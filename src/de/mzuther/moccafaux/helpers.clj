@@ -66,7 +66,38 @@
                                    raw-header
                                    (fill-string right-margin \space)])
         full-header  (add-borders pre-header \|)]
-    (println)
+    (newline)
     (print-line \- \o)
     (println full-header)
     (print-line \- \o)))
+
+
+(defn print-list
+  "Print coll as a list with the first element prepended by
+  padding-first (probably containing an annotation) and the remaining
+  elements by padding-rest (usually just white space).  The respective
+  padding and element will be spaced by sep and a single space. "
+  [padding-first padding-rest sep coll]
+  (let [paddings  (concat [padding-first]
+                          (repeat padding-rest))
+        separator (str sep " ")]
+    ;; mapv is not lazy!
+    (mapv #(println (string/join separator [%1 %2]))
+          paddings
+          coll)))
+
+
+(defn print-settings
+  "Print settings using a nice layout."
+  [interval task-names watch-names]
+  (let [padding-tasks   (format "%s  Tasks:    " padding)
+        padding-watches (format "%s  Watches:  " padding)
+        padding-rest    (format "%s            " padding)]
+    (newline)
+    (printfln "%s  Probe:    every %s seconds"
+              (get-timestamp)
+              interval)
+    (print-list padding-tasks padding-rest "-"
+                (map name task-names))
+    (print-list padding-watches padding-rest "-"
+                (map name watch-names))))

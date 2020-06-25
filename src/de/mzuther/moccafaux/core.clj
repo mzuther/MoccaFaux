@@ -2,7 +2,6 @@
   (:require [de.mzuther.moccafaux.helpers :as helpers]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
-            [clojure.string :as string]
             [chime.core :as chime]
             [com.rpl.specter :as sp]
             [popen])
@@ -117,7 +116,7 @@
         fork?     (sp/select-one [:fork] prefs)
         message   (sp/select-one [:message] prefs)]
     (when command
-      (println)
+      (newline)
       (helpers/printfln "%s  Task:     %s %s"
                         (helpers/get-timestamp) (name new-state) (name task))
       (helpers/printfln "%s  State:    %s"
@@ -209,16 +208,7 @@
   (helpers/print-header)
 
   (let [interval  (sp/select-one [:scheduler :probing-interval] preferences)]
-    (println)
-    (helpers/printfln "%s  Probe:    every %s seconds"
-                      (helpers/get-timestamp)
-                      interval)
-    (helpers/printfln "%s  Tasks:    %s"
-                      helpers/padding
-                      (string/join ", " (map name task-names)))
-    (helpers/printfln "%s  Watches:  %s"
-                      helpers/padding
-                      (string/join ", " (map name watch-names)))
+    (helpers/print-settings interval task-names watch-names)
 
     (newline)
     (helpers/print-line \-)
