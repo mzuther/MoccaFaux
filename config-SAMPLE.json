@@ -7,7 +7,7 @@
     "sleep": {
       "enable": {
         "message": "allow computer to save energy",
-        "command": "xautolock -time 15 -locker 'systemctl suspend' -detectsleep",
+        "command": "xautolock -time 10 -locker 'systemctl suspend' -detectsleep",
         "fork":    true
       },
       "disable": {
@@ -20,7 +20,7 @@
     "dpms": {
       "enable": {
         "message": "allow screen to save energy",
-        "command": "xset dpms 300 600 900",
+        "command": "xset dpms 0 300 600",
         "fork":    false
       },
       "disable": {

@@ -1,5 +1,6 @@
 (ns de.mzuther.moccafaux.helpers
-  (:require [clojure.string :as string]
+  (:require [de.mzuther.moccafaux.spec :as spec]
+            [clojure.string :as string]
             [trptcolin.versioneer.core :as version]))
 
 
@@ -97,7 +98,17 @@
     (printfln "%s  Probe:    every %s seconds"
               (get-timestamp)
               interval)
+    (newline)
     (print-list padding-tasks padding-rest "-"
                 (map name task-names))
+    (newline)
     (print-list padding-watches padding-rest "-"
                 (map name watch-names))))
+
+
+(defn instrument-specs []
+  (let [padding-first (format "%s  Specs:    " (get-timestamp))
+        padding-rest  (format "%s            " padding)]
+    (newline)
+    (print-list padding-first padding-rest "-"
+                (sort (spec/instrument-specs)))))

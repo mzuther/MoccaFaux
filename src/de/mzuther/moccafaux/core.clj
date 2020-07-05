@@ -204,9 +204,22 @@
 
 (defn -main
   "Print information on application and schedule watchers."
-  [& _]
+  [& args]
   (helpers/print-header)
 
+  ;; display help and exit
+  (when (some #{"help" "--help"} args)
+    (newline)
+    (println "Usage: MoccaFaux [--debug] [--help]")
+    (newline)
+    (flush)
+    (System/exit 0))
+
+  ;; enable debug mode (so far, this only instruments specs)
+  (when (some #{"debug" "--debug"} args)
+    (helpers/instrument-specs))
+
+  ;; display settings and enter main loop
   (let [interval  (sp/select-one [:scheduler :probing-interval] preferences)]
     (helpers/print-settings interval task-names watch-names)
 
