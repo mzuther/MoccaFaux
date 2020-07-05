@@ -88,6 +88,26 @@
           coll)))
 
 
+(defn exit-after-printing-help-and-errors
+  "Print help, command line parsing errors (if any) and exit with
+  given exit-code."
+  [args exit-code]
+  (let [{:keys [summary errors]} args]
+    (when errors
+      (newline)
+      (doseq [error errors]
+        (println "Error:" error)))
+
+    (newline)
+    (println "Usage: java -jar moccafaux.jar [OPTION...]")
+    (newline)
+    ;; display command line help
+    (println summary)
+    (newline)
+    (flush)
+    (System/exit exit-code)))
+
+
 (defn print-settings
   "Print settings using a nice layout."
   [interval task-names watch-names]

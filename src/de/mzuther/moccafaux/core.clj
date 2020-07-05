@@ -1,11 +1,19 @@
 (ns de.mzuther.moccafaux.core
   (:require [de.mzuther.moccafaux.helpers :as helpers]
+            [clojure.tools.cli :as cli]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [chime.core :as chime]
             [com.rpl.specter :as sp]
             [popen])
   (:gen-class))
+
+
+(def cli-options
+  [["-d" "--debug"
+    :desc "instrument function specs"]
+   ["-h" "--help"
+    :desc "display version and usage information"]])
 
 
 (def preferences
@@ -204,26 +212,28 @@
 
 (defn -main
   "Print information on application and schedule watchers."
-  [& args]
+  [& unparsed-args]
   (helpers/print-header)
 
-  ;; display help and exit
-  (when (some #{"help" "--help"} args)
-    (newline)
-    (println "Usage: MoccaFaux [--debug] [--help]")
-    (newline)
-    (flush)
-    (System/exit 0))
+  (let [args (cli/parse-opts unparsed-args cli-options)]
+    (cond
+      ;; display errors and exit
+      (sp/select-one [:errors] args)
+        (helpers/exit-after-printing-help-and-errors args 2)
 
-  ;; enable debug mode (so far, this only instruments specs)
-  (when (some #{"debug" "--debug"} args)
-    (helpers/instrument-specs))
+      ;; display help and exit
+      (sp/select-one [:options :help] args)
+        (helpers/exit-after-printing-help-and-errors args 0))
 
-  ;; display settings and enter main loop
-  (let [interval  (sp/select-one [:scheduler :probing-interval] preferences)]
-    (helpers/print-settings interval task-names watch-names)
+    ;; enable debug mode (so far, this only instruments specs)
+    (when (sp/select-one [:options :debug] args)
+      (helpers/instrument-specs))
 
-    (newline)
-    (helpers/print-line \-)
+    ;; display settings and enter main loop
+    (let [interval (sp/select-one [:scheduler :probing-interval] preferences)]
+      (helpers/print-settings interval task-names watch-names)
 
-    (start-scheduler update-status interval)))
+      (newline)
+      (helpers/print-line \-)
+
+      (start-scheduler update-status interval))))

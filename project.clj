@@ -6,6 +6,7 @@
 
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/data.json "1.0.0"]
+                 [org.clojure/tools.cli "1.0.194"]
                  [com.rpl/specter "1.1.3"]
                  [jarohen/chime "0.3.2"]
                  [popen "0.3.1"]
