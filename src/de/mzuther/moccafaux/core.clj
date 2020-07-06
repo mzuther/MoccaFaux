@@ -53,13 +53,6 @@
 (def task-states (ref {}))
 
 
-(defrecord TaskStates [id states]
-  Object
-  (toString [this]
-    (let [id (name (get this :id))]
-      (str id ": " (string/join ", " states)))))
-
-
 (defrecord TaskState [id state]
   Object
   (toString [this]
@@ -70,12 +63,38 @@
       (str id "=" state))))
 
 
-(defn make-task-states [id states]
+(defrecord TaskStates [id states]
+  Object
+  (toString [this]
+    (let [id (name (get this :id))]
+      (str id ": " (string/join ", " states)))))
+
+
+(defn make-task-state
+  "Create new TaskState object with given task ID and an exit state
+  (:enabled if exit state was *non-zero*, :disabled if it was *zero*
+  and nil if the watch was either disabled or not assigned to a
+  task)."
+  [id state]
+  (TaskState. id state))
+
+
+(defn make-task-states
+  "Create new TaskStates object with given ID and a TaskState seq."
+  [id states]
   (TaskStates. id states))
 
 
-(defn make-task-state [id state]
-  (TaskState. id state))
+(defrecord ProcessObject [process state])
+
+
+(defn make-process-object
+  "Create new ProcessObject object consisting of a Java process object
+  and an exit state (:forked if command has forked, :success if
+  command has exited with a zero exit code, and :failed in any other
+  case)."
+  [process state]
+  (ProcessObject. process state))
 
 
 (defn- shell-exec
@@ -89,15 +108,15 @@
   (let [new-process (popen/popen ["sh" "-c" command])]
     (if-not fork?
       (if (zero? (popen/exit-code new-process))
-        [:success new-process]
-        [:failed new-process])
+        (make-process-object new-process :success)
+        (make-process-object new-process :failed))
       (do
         ;; wait for 10 ms to check whether the process is actually
         ;; created and running
         (Thread/sleep 10)
         (if (popen/running? new-process)
-          [:forked new-process]
-          [:failed new-process])))))
+          (make-process-object new-process :forked)
+          (make-process-object new-process :failed))))))
 
 
 (defn- watch-exec
@@ -105,7 +124,7 @@
 
   Return a map containing the watch's name and an exit state for every
   defined task (:enabled if exit state was *non-zero*, :disabled if it
-  was *zero*).  In case a watch has not been enabled or to a given
+  was *zero*).  In case a watch has not been enabled or assigned to a
   task, set exit state to nil.
 
   Background information: energy saving is enabled when a watch is
@@ -117,7 +136,7 @@
   they do not find any matching lines or processes."
   [[watch-name {:keys [enabled command tasks]}]]
   (let [save-energy? (when enabled
-                       (let [[exit-state _] (shell-exec command false)]
+                       (let [{exit-state :state} (shell-exec command false)]
                          (if (= exit-state :failed)
                            :enable
                            :disable)))]
@@ -155,7 +174,7 @@
       (helpers/printfln "%s  Command:  %s"
                         helpers/padding command)
       ;; execute command (finally)
-      (let [[exit-state _] (shell-exec command fork?)]
+      (let [{exit-state :state} (shell-exec command fork?)]
         (helpers/printfln "%s  Result:   %s"
                           helpers/padding (name exit-state))
         exit-state))))
