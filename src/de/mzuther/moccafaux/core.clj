@@ -76,12 +76,17 @@
   and nil if the watch was either disabled or not assigned to a
   task)."
   [id state]
+  {:pre [(keyword? id)
+         (or (nil? state)
+             (get #{:enable :disable} state))]}
   (TaskState. id state))
 
 
 (defn make-task-states
   "Create new TaskStates object with given ID and a TaskState seq."
   [id states]
+  {:pre [(keyword? id)
+         (every? #(= (type %) TaskState) states)]}
   (TaskStates. id states))
 
 
@@ -94,6 +99,8 @@
   command has exited with a zero exit code, and :failed in any other
   case)."
   [process state]
+  {:pre [(= (type process) java.lang.ProcessImpl)
+         (get #{:forked :success :failed} state)]}
   (ProcessObject. process state))
 
 
