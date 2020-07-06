@@ -1,6 +1,5 @@
 (ns de.mzuther.moccafaux.helpers
-  (:require [de.mzuther.moccafaux.spec :as spec]
-            [clojure.string :as string]
+  (:require [clojure.string :as string]
             [trptcolin.versioneer.core :as version]))
 
 
@@ -96,7 +95,7 @@
     (when errors
       (newline)
       (doseq [error errors]
-        (println "Error:" error)))
+        (println "ERROR:" error)))
 
     (newline)
     (println "Usage: java -jar moccafaux.jar [OPTION...]")
@@ -124,11 +123,3 @@
     (newline)
     (print-list padding-watches padding-rest "-"
                 (map name watch-names))))
-
-
-(defn instrument-specs []
-  (let [padding-first (format "%s  Specs:    " (get-timestamp))
-        padding-rest  (format "%s            " padding)]
-    (newline)
-    (print-list padding-first padding-rest "-"
-                (sort (spec/instrument-specs)))))

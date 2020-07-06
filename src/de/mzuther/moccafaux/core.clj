@@ -11,9 +11,7 @@
 
 
 (def cli-options
-  [["-d" "--debug"
-    :desc "instrument function specs"]
-   ["-h" "--help"
+  [["-h" "--help"
     :desc "display version and usage information"]])
 
 
@@ -246,10 +244,6 @@
       ;; display help and exit
       (sp/select-one [:options :help] args)
         (helpers/exit-after-printing-help-and-errors args 0))
-
-    ;; enable debug mode (so far, this only instruments specs)
-    (when (sp/select-one [:options :debug] args)
-      (helpers/instrument-specs))
 
     ;; display settings and enter main loop
     (let [interval (sp/select-one [:scheduler :probing-interval] preferences)]
