@@ -72,7 +72,7 @@
 
 (defn make-task-state
   "Create new TaskState object with given task ID and an exit state
-  (:enabled if exit state was *non-zero*, :disabled if it was *zero*
+  (:enable if exit state was *non-zero*, :disable if it was *zero*
   and nil if the watch was either disabled or not assigned to a
   task)."
   [id state]
@@ -130,7 +130,7 @@
   "Execute watch and apply exit state of watch to all defined tasks.
 
   Return a map containing the watch's name and an exit state for every
-  defined task (:enabled if exit state was *non-zero*, :disabled if it
+  defined task (:enable if exit state was *non-zero*, :disable if it
   was *zero*).  In case a watch has not been enabled or assigned to a
   task, set exit state to nil.
 
