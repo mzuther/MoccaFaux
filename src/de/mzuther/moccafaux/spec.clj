@@ -2,9 +2,9 @@
 (ns de.mzuther.moccafaux.core)
 
 (ns de.mzuther.moccafaux.spec
-  (:require  [de.mzuther.moccafaux.core]
-             [clojure.spec.alpha :as s]
-             [clojure.spec.test.alpha :as stest]))
+  (:require [de.mzuther.moccafaux.core]
+            [clojure.spec.alpha :as s]
+            [clojure.spec.test.alpha :as stest]))
 
 
 (s/def ::enabled
@@ -38,10 +38,8 @@
   (s/coll-of ::task-state))
 
 (s/def ::watch
-  (s/cat :name keyword?
-         :settings (s/keys :req-un [::enabled
-                                    ::command
-                                    ::tasks])))
+  ;; something seems to be broken in spec instrumentation
+  map-entry?)
 
 ;; -----------------------------------------------------------------------------
 

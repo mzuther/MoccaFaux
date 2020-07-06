@@ -1,8 +1,9 @@
 (ns de.mzuther.moccafaux.core
   (:require [de.mzuther.moccafaux.helpers :as helpers]
-            [clojure.tools.cli :as cli]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
+            [clojure.string :as string]
+            [clojure.tools.cli :as cli]
             [chime.core :as chime]
             [com.rpl.specter :as sp]
             [popen])
@@ -54,6 +55,31 @@
 (def task-states (ref {}))
 
 
+(defrecord TaskStates [id states]
+  Object
+  (toString [this]
+    (let [id (name (get this :id))]
+      (str id ": " (string/join ", " states)))))
+
+
+(defrecord TaskState [id state]
+  Object
+  (toString [this]
+    (let [id    (name (get this :id))
+          state (if-let [state (get this :state)]
+                  (name state)
+                  "nil")]
+      (str id "=" state))))
+
+
+(defn make-task-states [id states]
+  (TaskStates. id states))
+
+
+(defn make-task-state [id state]
+  (TaskState. id state))
+
+
 (defn- shell-exec
   "Execute command in a shell compatible to the Bourne shell and
   fork process if fork? is true.
@@ -97,15 +123,14 @@
                          (if (= exit-state :failed)
                            :enable
                            :disable)))]
-    ;; Apply exit state of watch to all defined tasks (or nil when the
+    ;; apply exit state of watch to all defined tasks (or nil when the
     ;; watch has not been assigned to the given task).
-    (reduce (fn [exit-states task]
-              (assoc exit-states
-                     task
-                     (when (get tasks task)
-                       save-energy?)))
-            {:watch watch-name}
-            task-names)))
+    (make-task-states watch-name
+                      (map (fn [task]
+                             (make-task-state task
+                                              (when (get tasks task)
+                                                save-energy?)))
+                           task-names))))
 
 
 (defn update-energy-saving
@@ -166,15 +191,12 @@
   Return new task states, consisting of a map containing keys for all
   defined tasks with values according to \"enable-disable-or-nil?\"."
   [_]
-  (let [exit-states     (->> defined-watches
-                             (map watch-exec))
-        new-task-states (reduce (fn [new-ts task]
-                                  (assoc new-ts
-                                         task
-                                         (enable-disable-or-nil?
-                                           (map task exit-states))))
-                                {}
-                                task-names)
+  (let [exit-states     (map watch-exec defined-watches)
+        extract-state   (fn [task] (->> exit-states
+                                        (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
+                                        (enable-disable-or-nil?)
+                                        (vector task)))
+        new-task-states (into {} (map extract-state task-names))
         update-needed?  (not= new-task-states @task-states)
         update-task     (fn [task]
                           (let [new-state (sp/select-one [task] new-task-states)
