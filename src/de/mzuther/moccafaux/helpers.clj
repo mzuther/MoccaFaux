@@ -7,10 +7,14 @@
 (def padding   "          ")
 
 
-(defn printfln
-  "Print formatted output, as per format, followed by (newline)."
-  [fmt & args]
-  (println (apply format fmt args)))
+(defn get-timestamp
+  "Get current local time.
+
+  Return a string formatted as \"[HH:mm:ss]\"."
+  []
+  (->> (java.time.LocalTime/now)
+       (.format (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss"))
+       (format "[%s]")))
 
 
 (defn fill-string
@@ -23,20 +27,16 @@
        (apply str)))
 
 
-(defn get-timestamp
-  "Get current local time.
-
-  Return a string formatted as \"[HH:mm:ss]\"."
-  []
-  (->> (java.time.LocalTime/now)
-       (.format (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss"))
-       (format "[%s]")))
-
-
 (defn add-borders
   "Create a string consisting of ch followed by s followed by ch."
   [s ch]
   (string/join [ch s ch]))
+
+
+(defn printfln
+  "Print formatted output, as per format, followed by (newline)."
+  [fmt & args]
+  (println (apply format fmt args)))
 
 
 (defn print-line
@@ -87,6 +87,24 @@
           coll)))
 
 
+(defn print-settings
+  "Print settings using a nice layout."
+  [interval task-names watch-names]
+  (let [padding-tasks   (format "%s  Tasks:    " padding)
+        padding-watches (format "%s  Watches:  " padding)
+        padding-rest    (format "%s            " padding)]
+    (newline)
+    (printfln "%s  Probe:    every %s seconds"
+              (get-timestamp)
+              interval)
+    (newline)
+    (print-list padding-tasks padding-rest "-"
+                (map name task-names))
+    (newline)
+    (print-list padding-watches padding-rest "-"
+                (map name watch-names))))
+
+
 (defn exit-after-printing-help-and-errors
   "Print help, command line parsing errors (if any) and exit with
   given exit-code."
@@ -105,21 +123,3 @@
     (newline)
     (flush)
     (System/exit exit-code)))
-
-
-(defn print-settings
-  "Print settings using a nice layout."
-  [interval task-names watch-names]
-  (let [padding-tasks   (format "%s  Tasks:    " padding)
-        padding-watches (format "%s  Watches:  " padding)
-        padding-rest    (format "%s            " padding)]
-    (newline)
-    (printfln "%s  Probe:    every %s seconds"
-              (get-timestamp)
-              interval)
-    (newline)
-    (print-list padding-tasks padding-rest "-"
-                (map name task-names))
-    (newline)
-    (print-list padding-watches padding-rest "-"
-                (map name watch-names))))
