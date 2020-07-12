@@ -17,11 +17,11 @@
   :uberjar-name "moccafaux.jar"
 
   :profiles {:debug   {:debug       true
-                       :injections  [(newline)
-                                     (doseq [s (into {} (System/getProperties))]
-                                       (prn s))
-                                     (newline)
-                                     (flush)]
+                       ;; :injections  [(newline)
+                       ;;               (doseq [s (into {} (System/getProperties))]
+                       ;;                 (prn s))
+                       ;;               (newline)
+                       ;;               (flush)]
                        :global-vars {*warn-on-reflection* true
                                      *assert*             true}}
              :uberjar {:aot         :all

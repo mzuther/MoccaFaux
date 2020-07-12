@@ -245,7 +245,7 @@
                                       (java.time.Duration/ofSeconds interval))
                   (fn [timestamp]
                     (let [actual-millis (.toEpochMilli (java.time.Instant/now))
-                          target-millis (.toEpochMilli timestamp)
+                          target-millis (.toEpochMilli ^java.time.Instant timestamp)
                           seconds-late  (/ (- actual-millis target-millis)
                                            1000.0)]
                       ;; skip scheduled instants that were actually
