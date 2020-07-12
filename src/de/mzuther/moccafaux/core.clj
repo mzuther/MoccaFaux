@@ -17,19 +17,19 @@
 
 (def preferences
   (try (let [;; "io/file" takes care of line separators
-             file-name  (io/file (System/getProperty "user.home")
-                                 ".config" "moccafaux" "config.json")
+             file-name  (io! (io/file (System/getProperty "user.home")
+                                      ".config" "moccafaux" "config.json"))
              user-prefs (json/read-str (slurp file-name)
                                        :key-fn keyword)]
          (if (map? user-prefs)
            user-prefs
            (throw (Exception. "JSON error (not handled by library)"))))
        (catch Throwable e
-         (helpers/print-header)
-         (newline)
-         (println (str e))
-         (newline)
-         (flush)
+         (io! (helpers/print-header)
+              (newline)
+              (println (str e))
+              (newline)
+              (flush))
          (System/exit 1))))
 
 
@@ -112,18 +112,18 @@
   keyword is :forked if command has forked, :success if command has
   exited with a zero exit code, and :failed in any other case."
   [command fork?]
-  (let [new-process (popen/popen ["sh" "-c" command])]
-    (if-not fork?
-      (if (zero? (popen/exit-code new-process))
-        (make-process-object new-process :success)
-        (make-process-object new-process :failed))
-      (do
-        ;; wait for 10 ms to check whether the process is actually
-        ;; created and running
-        (Thread/sleep 10)
-        (if (popen/running? new-process)
-          (make-process-object new-process :forked)
-          (make-process-object new-process :failed))))))
+  (io! (let [new-process (popen/popen ["sh" "-c" command])]
+         (if-not fork?
+           (if (zero? (popen/exit-code new-process))
+             (make-process-object new-process :success)
+             (make-process-object new-process :failed))
+           (do
+             ;; wait for 10 ms to check whether the process is actually
+             ;; created and running
+             (Thread/sleep 10)
+             (if (popen/running? new-process)
+               (make-process-object new-process :forked)
+               (make-process-object new-process :failed)))))))
 
 
 (defn- watch-exec
@@ -172,19 +172,19 @@
         command   (sp/select-one [:command] prefs)
         fork?     (sp/select-one [:fork] prefs)
         message   (sp/select-one [:message] prefs)]
-    (when command
-      (newline)
-      (helpers/printfln "%s  Task:     %s %s"
-                        (helpers/get-timestamp) (name new-state) (name task))
-      (helpers/printfln "%s  State:    %s"
-                        helpers/padding message)
-      (helpers/printfln "%s  Command:  %s"
-                        helpers/padding command)
-      ;; execute command (finally)
-      (let [{exit-state :state} (shell-exec command fork?)]
-        (helpers/printfln "%s  Result:   %s"
-                          helpers/padding (name exit-state))
-        exit-state))))
+    (io! (when command
+           (newline)
+           (helpers/printfln "%s  Task:     %s %s"
+                             (helpers/get-timestamp) (name new-state) (name task))
+           (helpers/printfln "%s  State:    %s"
+                             helpers/padding message)
+           (helpers/printfln "%s  Command:  %s"
+                             helpers/padding command)
+           ;; execute command (finally)
+           (let [{exit-state :state} (shell-exec command fork?)]
+             (helpers/printfln "%s  Result:   %s"
+                               helpers/padding (name exit-state))
+             exit-state)))))
 
 
 (defn enable-disable-or-nil?
@@ -230,8 +230,8 @@
     (doseq [task task-names]
       (update-task task))
     (when update-needed?
-      (newline)
-      (helpers/print-line \-))
+      (io! (newline)
+           (helpers/print-line \-)))
     (dosync (ref-set task-states
                      new-task-states))))
 
@@ -253,29 +253,28 @@
                       (when-not (>= seconds-late interval)
                         (f timestamp))))
                   ;; display exception and kill scheduler
-                  {:error-handler (fn [e] (println (str e)))}))
+                  {:error-handler (fn [e] (io! (println (str e))))}))
 
 
 (defn -main
   "Print information on application and schedule watchers."
   [& unparsed-args]
-  (helpers/print-header)
+  (io! (helpers/print-header))
 
   (let [args (cli/parse-opts unparsed-args cli-options)]
     (cond
       ;; display errors and exit
       (sp/select-one [:errors] args)
-        (helpers/exit-after-printing-help-and-errors args 2)
+        (io! (helpers/exit-after-printing-help-and-errors args 2))
 
       ;; display help and exit
       (sp/select-one [:options :help] args)
-        (helpers/exit-after-printing-help-and-errors args 0))
+        (io! (helpers/exit-after-printing-help-and-errors args 0)))
 
     ;; display settings and enter main loop
     (let [interval (sp/select-one [:scheduler :probing-interval] preferences)]
-      (helpers/print-settings interval task-names watch-names)
-
-      (newline)
-      (helpers/print-line \-)
+      (io! (helpers/print-settings interval task-names watch-names)
+           (newline)
+           (helpers/print-line \-))
 
       (start-scheduler update-status interval))))

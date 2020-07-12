@@ -109,17 +109,17 @@
   "Print help, command line parsing errors (if any) and exit with
   given exit-code."
   [args exit-code]
-  (let [{:keys [summary errors]} args]
-    (when errors
-      (newline)
-      (doseq [error errors]
-        (println "ERROR:" error)))
+  (io! (let [{:keys [summary errors]} args]
+         (when errors
+           (newline)
+           (doseq [error errors]
+             (println "ERROR:" error)))
 
-    (newline)
-    (println "Usage: java -jar moccafaux.jar [OPTION...]")
-    (newline)
-    ;; display command line help
-    (println summary)
-    (newline)
-    (flush)
-    (System/exit exit-code)))
+         (newline)
+         (println "Usage: java -jar moccafaux.jar [OPTION...]")
+         (newline)
+         ;; display command line help
+         (println summary)
+         (newline)
+         (flush)))
+  (System/exit exit-code))
