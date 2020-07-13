@@ -1,34 +1,52 @@
 (ns moccafaux.core-test
-  (:require [clojure.test :refer :all]
-            [de.mzuther.moccafaux.core :refer :all]))
+  (:require [clojure.test :refer [deftest testing is]]
+            [de.mzuther.moccafaux.core :as moccafaux]))
 
 
-(deftest test-enable-disable-or-nil
-  (testing "FIXME, I fail."
-    ;; empty vector
-    (is (= (enable-disable-or-nil? [])
-           nil))
-    ;; vector of nils
-    (is (= (enable-disable-or-nil? [nil nil nil nil nil nil])
-           nil))
-    ;; vector with single :disable
-    (is (= (enable-disable-or-nil? [:disable])
-           :disable))
-    ;; vector with multiple :disable
-    (is (= (enable-disable-or-nil? [:disable :disable :disable :disable])
-           :disable))
-    ;; mixed vector with :disable
-    (is (= (enable-disable-or-nil? [nil 1 2 0 :enable :disable])
-           :disable))
-    ;; vector with single :enable
-    (is (= (enable-disable-or-nil? [:enable])
-           :enable))
-    ;; "disable" string instead of keyword
-    (is (= (enable-disable-or-nil? ["disable"])
-           :enable))
-    ;; vector with inrelated scalar value
-    (is (= (enable-disable-or-nil? [1])
-           :enable))
-    ;; mixed vector with "disable" string instead of keyword
-    (is (= (enable-disable-or-nil? [nil 1 2 0 :enable "disable"])
-           :enable))))
+(deftest enable-disable-or-nil?
+  (testing "nil"
+    (testing "empty vector"
+      (is (= (moccafaux/enable-disable-or-nil? [])
+             nil)))
+
+    (testing "single nil"
+      (is (= (moccafaux/enable-disable-or-nil? [nil])
+             nil)))
+
+    (testing "multiple nil"
+      (is (= (moccafaux/enable-disable-or-nil? [nil nil nil nil nil nil])
+             nil))))
+
+
+
+  (testing ":disable"
+    (testing "single :disable"
+      (is (= (moccafaux/enable-disable-or-nil? [:disable])
+             :disable)))
+
+    (testing "multiple :disable"
+      (is (= (moccafaux/enable-disable-or-nil? [:disable :disable :disable :disable])
+             :disable)))
+
+    (testing "mixed vector"
+      (is (= (moccafaux/enable-disable-or-nil? [nil 1 2 0 :enable :disable])
+             :disable))))
+
+
+  
+  (testing ":enable"
+    (testing "single :enable"
+      (is (= (moccafaux/enable-disable-or-nil? [:enable])
+             :enable)))
+
+    (testing "single string \"disable\""
+      (is (= (moccafaux/enable-disable-or-nil? ["disable"])
+             :enable)))
+
+    (testing "unrelated scalar value"
+      (is (= (moccafaux/enable-disable-or-nil? [1])
+             :enable)))
+
+    (testing "mixed vector with string \"disable\""
+      (is (= (moccafaux/enable-disable-or-nil? [nil 1 2 0 :enable "disable"])
+             :enable)))))
