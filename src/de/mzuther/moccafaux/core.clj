@@ -112,6 +112,9 @@
   keyword is :forked if command has forked, :success if command has
   exited with a zero exit code, and :failed in any other case."
   [command fork?]
+  {:pre [(string? command)
+         (seq command)
+         (boolean? fork?)]}
   (io! (let [new-process (popen/popen ["sh" "-c" command])]
          (if-not fork?
            (if (zero? (popen/exit-code new-process))
