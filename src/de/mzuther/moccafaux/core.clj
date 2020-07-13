@@ -1,111 +1,137 @@
 (ns de.mzuther.moccafaux.core
-  (:require [clojure.data.json :as json]
+  (:require [de.mzuther.moccafaux.helpers :as helpers]
+            [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as string]
+            [clojure.tools.cli :as cli]
             [chime.core :as chime]
             [com.rpl.specter :as sp]
-            [popen]
-            [trptcolin.versioneer.core :as version])
+            [popen])
   (:gen-class))
+
+
+(def cli-options
+  [["-h" "--help"
+    :desc "display version and usage information"]])
 
 
 (def preferences
   (try (let [;; "io/file" takes care of line separators
-             file-name     (io/file (System/getProperty "user.home")
-                                    ".config" "moccafaux" "config.json")
-             user-prefs    (json/read-str (slurp file-name)
-                                          :key-fn keyword)]
+             file-name  (io! (io/file (System/getProperty "user.home")
+                                      ".config" "moccafaux" "config.json"))
+             user-prefs (json/read-str (slurp file-name)
+                                       :key-fn keyword)]
          (if (map? user-prefs)
            user-prefs
            (throw (Exception. "JSON error (not handled by library)"))))
        (catch Throwable e
-         (newline)
-         (println (str e))
-         (newline)
-         (flush)
+         (io! (helpers/print-header)
+              (newline)
+              (println (str e))
+              (newline)
+              (flush))
          (System/exit 1))))
 
 
-(def defined-tasks
+(def task-names
   (->> preferences
        (sp/select [:tasks sp/MAP-KEYS])
        sort))
+
+
+(def defined-watches
+  (->> preferences
+       (sp/select-one [:watches])
+       sort))
+
+
+(def watch-names
+  (sp/select [sp/MAP-KEYS] defined-watches))
 
 
 ;; empty ref forces an update on first call to "update-status"
 (def task-states (ref {}))
 
 
-(def page-width 80)
+(defrecord TaskState [id state]
+  Object
+  (toString [this]
+    (let [id    (name (get this :id))
+          state (if-let [state (get this :state)]
+                  (name state)
+                  "nil")]
+      (str id "=" state))))
 
 
-(defn- printfln
-  "Print formatted output, as per format, followed by (newline)."
-  [fmt & args]
-  (println (apply format fmt args)))
+(defrecord TaskStates [id states]
+  Object
+  (toString [this]
+    (let [id (name (get this :id))]
+      (str id ": " (string/join ", " states)))))
 
 
-(defn- fill-string
-  "Create a string by n repetitions of ch.
+(defn make-task-state
+  "Create new TaskState object with given task ID and an exit state
+  (:enable if exit state was *non-zero*, :disable if it was *zero*
+  and nil if the watch was either disabled or not assigned to a
+  task)."
+  [id state]
+  {:pre [(keyword? id)
+         (or (nil? state)
+             (get #{:enable :disable} state))]}
+  (TaskState. id state))
 
-  Return this string."
-  [n ch]
-  (->> ch
-       (repeat n)
-       (apply str)))
+
+(defn make-task-states
+  "Create new TaskStates object with given ID and a TaskState seq."
+  [id states]
+  {:pre [(keyword? id)
+         (every? #(= (type %) TaskState) states)]}
+  (TaskStates. id states))
 
 
-(defn- print-header
-  "Print a nicely formatted header with application name and version number."
-  []
-  (let [add-borders  (fn [s char] (string/join [char s char]))
+(defrecord ProcessObject [process state])
 
-        header       (str "MoccaFaux v" (version/get-version "de.mzuther" "moccafaux.core"))
 
-        page-width   (- page-width 2)
-        header-width (count header)
-        left-margin  (quot (- page-width header-width) 2)
-        right-margin (- page-width header-width left-margin)
-
-        full-line    (add-borders (fill-string page-width "-") "o")
-        full-header  (add-borders
-                       (string/join [(fill-string left-margin " ")
-                                     header
-                                     (fill-string right-margin " ")])
-                       "|")]
-    (println)
-    (println full-line)
-    (println full-header)
-    (println full-line)))
+(defn make-process-object
+  "Create new ProcessObject object consisting of a Java process object
+  and an exit state (:forked if command has forked, :success if
+  command has exited with a zero exit code, and :failed in any other
+  case)."
+  [process state]
+  {:pre [(= (type process) java.lang.ProcessImpl)
+         (get #{:forked :success :failed} state)]}
+  (ProcessObject. process state))
 
 
 (defn- shell-exec
   "Execute command in a shell compatible to the Bourne shell and
   fork process if fork? is true.
 
-  Return :forked if command has forked, :success if command has
+  Return a vector of a keyword and the created process object.  The
+  keyword is :forked if command has forked, :success if command has
   exited with a zero exit code, and :failed in any other case."
   [command fork?]
-  (let [new-process (popen/popen ["sh" "-c" command])]
-    (if-not fork?
-      (if (zero? (popen/exit-code new-process))
-        :success
-        :failed)
-      (do
-        ;; wait for 10 ms to check whether the process is actually
-        ;; created and running
-        (Thread/sleep 10)
-        (if (popen/running? new-process)
-          :forked
-          :failed)))))
+  (io! (let [new-process (popen/popen ["sh" "-c" command])]
+         (if-not fork?
+           (if (zero? (popen/exit-code new-process))
+             (make-process-object new-process :success)
+             (make-process-object new-process :failed))
+           (do
+             ;; wait for 10 ms to check whether the process is actually
+             ;; created and running
+             (Thread/sleep 10)
+             (if (popen/running? new-process)
+               (make-process-object new-process :forked)
+               (make-process-object new-process :failed)))))))
 
 
 (defn- watch-exec
   "Execute watch and apply exit state of watch to all defined tasks.
 
   Return a map containing the watch's name and an exit state for every
-  defined task (:enabled if exit state was *non-zero*, :disabled if it
-  was *zero*).  In case a watch has not been enabled or to a given
+  defined task (:enable if exit state was *non-zero*, :disable if it
+  was *zero*).  In case a watch has not been enabled or assigned to a
   task, set exit state to nil.
 
   Background information: energy saving is enabled when a watch is
@@ -117,19 +143,18 @@
   they do not find any matching lines or processes."
   [[watch-name {:keys [enabled command tasks]}]]
   (let [save-energy? (when enabled
-                       (let [exit-state (shell-exec command false)]
+                       (let [{exit-state :state} (shell-exec command false)]
                          (if (= exit-state :failed)
                            :enable
                            :disable)))]
-    ;; Apply exit state of watch to all defined tasks (or nil when the
+    ;; apply exit state of watch to all defined tasks (or nil when the
     ;; watch has not been assigned to the given task).
-    (reduce (fn [exit-states task]
-              (assoc exit-states
-                     task
-                     (when (get tasks task)
-                       save-energy?)))
-            {:watch watch-name}
-            defined-tasks)))
+    (make-task-states watch-name
+                      (map (fn [task]
+                             (make-task-state task
+                                              (when (get tasks task)
+                                                save-energy?)))
+                           task-names))))
 
 
 (defn update-energy-saving
@@ -143,27 +168,26 @@
   (when (nil? new-state)
     (throw (IllegalArgumentException.
              "eeek, a NIL entered \"update-energy-saving\"")))
-  (let [timestamp (. (java.time.format.DateTimeFormatter/ofPattern "HH:mm:ss")
-                     format
-                     (java.time.LocalTime/now))
-        padding   "          "
-
-        prefs     (sp/select-one [:tasks task new-state] preferences)
+  (let [prefs     (sp/select-one [:tasks task new-state] preferences)
         command   (sp/select-one [:command] prefs)
         fork?     (sp/select-one [:fork] prefs)
         message   (sp/select-one [:message] prefs)]
-    (when command
-      (println)
-      (printfln "[%s]  Task:    %s" timestamp (name task))
-      (printfln "%s  State:   %s (%s)" padding (name new-state) message)
-      (printfln "%s  Command: %s" padding command)
-      ;; execute command (finally)
-      (let [exit-state (shell-exec command fork?)]
-        (printfln "%s  Result:  %s" padding (name exit-state))
-        exit-state))))
+    (io! (when command
+           (newline)
+           (helpers/printfln "%s  Task:     %s %s"
+                             (helpers/get-timestamp) (name new-state) (name task))
+           (helpers/printfln "%s  State:    %s"
+                             helpers/padding message)
+           (helpers/printfln "%s  Command:  %s"
+                             helpers/padding command)
+           ;; execute command (finally)
+           (let [{exit-state :state} (shell-exec command fork?)]
+             (helpers/printfln "%s  Result:   %s"
+                               helpers/padding (name exit-state))
+             exit-state)))))
 
 
-(defn- enable-disable-or-nil?
+(defn enable-disable-or-nil?
   "Reduce coll to a scalar.
 
   Return :disable if coll contains a :disable value.  If it doesn't
@@ -191,26 +215,23 @@
   Return new task states, consisting of a map containing keys for all
   defined tasks with values according to \"enable-disable-or-nil?\"."
   [_]
-  (let [exit-states     (->> (sp/select-one [:watches] preferences)
-                             (map watch-exec))
-        new-task-states (reduce (fn [new-ts task]
-                                  (assoc new-ts
-                                         task
-                                         (enable-disable-or-nil?
-                                           (map task exit-states))))
-                                {}
-                                defined-tasks)
+  (let [exit-states     (map watch-exec defined-watches)
+        extract-state   (fn [task] (->> exit-states
+                                        (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
+                                        (enable-disable-or-nil?)
+                                        (vector task)))
+        new-task-states (into {} (map extract-state task-names))
         update-needed?  (not= new-task-states @task-states)
         update-task     (fn [task]
                           (let [new-state (sp/select-one [task] new-task-states)
                                 old-state (sp/select-one [task] @task-states)]
                             (when (not= new-state old-state)
                               (update-energy-saving task new-state))))]
-    (doseq [task defined-tasks]
+    (doseq [task task-names]
       (update-task task))
     (when update-needed?
-      (newline)
-      (println (fill-string page-width \-)))
+      (io! (newline)
+           (helpers/print-line \-)))
     (dosync (ref-set task-states
                      new-task-states))))
 
@@ -224,7 +245,7 @@
                                       (java.time.Duration/ofSeconds interval))
                   (fn [timestamp]
                     (let [actual-millis (.toEpochMilli (java.time.Instant/now))
-                          target-millis (.toEpochMilli timestamp)
+                          target-millis (.toEpochMilli ^java.time.Instant timestamp)
                           seconds-late  (/ (- actual-millis target-millis)
                                            1000.0)]
                       ;; skip scheduled instants that were actually
@@ -232,13 +253,28 @@
                       (when-not (>= seconds-late interval)
                         (f timestamp))))
                   ;; display exception and kill scheduler
-                  {:error-handler (fn [e] (println (str e)))}))
+                  {:error-handler (fn [e] (io! (println (str e))))}))
 
 
 (defn -main
   "Print information on application and schedule watchers."
-  [& _]
-  (print-header)
+  [& unparsed-args]
+  (io! (helpers/print-header))
 
-  (start-scheduler update-status
-                   (sp/select-one [:scheduler :probing-interval] preferences)))
+  (let [args (cli/parse-opts unparsed-args cli-options)]
+    (cond
+      ;; display errors and exit
+      (sp/select-one [:errors] args)
+        (io! (helpers/exit-after-printing-help-and-errors args 2))
+
+      ;; display help and exit
+      (sp/select-one [:options :help] args)
+        (io! (helpers/exit-after-printing-help-and-errors args 0)))
+
+    ;; display settings and enter main loop
+    (let [interval (sp/select-one [:scheduler :probing-interval] preferences)]
+      (io! (helpers/print-settings interval task-names watch-names)
+           (newline)
+           (helpers/print-line \-))
+
+      (start-scheduler update-status interval))))
