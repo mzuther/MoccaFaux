@@ -3,6 +3,37 @@
             [de.mzuther.moccafaux.core :as moccafaux]))
 
 
+(deftest shell-exec
+  (testing "non-forking"
+    (testing "zero exit code"
+      (is (= (:state (moccafaux/shell-exec "ls" false))
+             :success)))
+
+    (testing "non-zero exit code"
+      (is (= (:state (moccafaux/shell-exec "this-is-not-a-command" false))
+             :failed)))
+
+    (testing "empty command"
+      (is (thrown? AssertionError
+                   (moccafaux/shell-exec "" false)))))
+
+
+
+  (testing "forking"
+    (testing "fork is running"
+      (is (= (:state (moccafaux/shell-exec "sleep 1" true))
+             :forked)))
+
+    (testing "fork exited early"
+      (is (= (:state (moccafaux/shell-exec "sleep 0.002" true))
+             :failed)))
+
+    (testing "could not fork"
+      (is (= (:state (moccafaux/shell-exec "ls" true))
+             :failed)))))
+
+
+
 (deftest enable-disable-or-nil?
   (testing "nil"
     (testing "empty vector"
@@ -33,7 +64,7 @@
              :disable))))
 
 
-  
+
   (testing ":enable"
     (testing "single :enable"
       (is (= (moccafaux/enable-disable-or-nil? [:enable])

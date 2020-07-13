@@ -104,7 +104,7 @@
   (ProcessObject. process state))
 
 
-(defn- shell-exec
+(defn shell-exec
   "Execute command in a shell compatible to the Bourne shell and
   fork process if fork? is true.
 
