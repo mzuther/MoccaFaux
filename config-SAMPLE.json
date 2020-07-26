@@ -20,7 +20,7 @@
     "dpms": {
       "enable": {
         "message": "allow screen to save energy",
-        "command": "xset dpms 0 300 600",
+        "command": "xset dpms 0 600 900",
         "fork":    false
       },
       "disable": {

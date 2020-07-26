@@ -129,13 +129,13 @@
                (make-process-object new-process :failed)))))))
 
 
-(defn- watch-exec
+(defn watch-exec
   "Execute watch and apply exit state of watch to all defined tasks.
 
   Return a map containing the watch's name and an exit state for every
-  defined task (:enable if exit state was *non-zero*, :disable if it
-  was *zero*).  In case a watch has not been enabled or assigned to a
-  task, set exit state to nil.
+  task in task-names (:enable if exit state was *non-zero*, :disable
+  if it was *zero*).  In case a watch has not been enabled or assigned
+  to a task, set exit state to nil.
 
   Background information: energy saving is enabled when a watch is
   enabled and the respective shell command failed (returned a
@@ -144,7 +144,7 @@
 
   For example, 'grep' and 'pgrep' return a *non-zero* exit code when
   they do not find any matching lines or processes."
-  [[watch-name {:keys [enabled command tasks]}]]
+  [task-names [watch-name {:keys [enabled command tasks]}]]
   (let [save-energy? (when enabled
                        (let [{exit-state :state} (shell-exec command false)]
                          (if (= exit-state :failed)
@@ -218,7 +218,8 @@
   Return new task states, consisting of a map containing keys for all
   defined tasks with values according to \"enable-disable-or-nil?\"."
   [_]
-  (let [exit-states     (map watch-exec defined-watches)
+  (let [exit-states     (map (partial watch-exec task-names)
+                             defined-watches)
         extract-state   (fn [task] (->> exit-states
                                         (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
                                         (enable-disable-or-nil?)
