@@ -6,11 +6,11 @@
 (deftest shell-exec
   (testing "non-forking"
     (testing "zero exit code"
-      (is (= (:state (moccafaux/shell-exec "ls" false))
+      (is (= (:state (moccafaux/shell-exec "true" false))
              :success)))
 
     (testing "non-zero exit code"
-      (is (= (:state (moccafaux/shell-exec "this-is-not-a-command" false))
+      (is (= (:state (moccafaux/shell-exec "false" false))
              :failed)))
 
     (testing "empty command"
@@ -29,7 +29,7 @@
              :failed)))
 
     (testing "could not fork"
-      (is (= (:state (moccafaux/shell-exec "ls" true))
+      (is (= (:state (moccafaux/shell-exec "true" true))
              :failed)))))
 
 
@@ -43,7 +43,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "ls",
+                                       :command "true",
                                        :tasks   {}}])
                states-empty)))
 
@@ -51,7 +51,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "this-is-not-a-command",
+                                       :command "false",
                                        :tasks   {}}])
                states-empty)))))
 
@@ -67,7 +67,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled false,
-                                       :command "ls",
+                                       :command "true",
                                        :tasks   {:first false}}])
                states-nil)))
 
@@ -75,14 +75,14 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "ls",
+                                       :command "true",
                                        :tasks   {:first false}}])
                states-nil)))
 
       (testing "enabled-task-implicit"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
-                                      {:command "ls",
+                                      {:command "true",
                                        :tasks   {:first false}}])
                states-nil)))
 
@@ -90,7 +90,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "ls",
+                                       :command "true",
                                        :tasks   {:first false}}])
                states-nil)))
 
@@ -98,14 +98,14 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "ls"}])
+                                       :command "true"}])
                states-nil)))
 
       (testing "zero exit code"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "ls",
+                                       :command "true",
                                        :tasks   {:first true}}])
                states-disable)))
 
@@ -113,7 +113,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "this-is-not-a-command",
+                                       :command "false",
                                        :tasks   {:first true}}])
                states-enable)))))
 
@@ -130,7 +130,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled false,
-                                       :command "ls",
+                                       :command "true",
                                        :tasks   {:first  false
                                                  :second false}}])
                states-nil)))
@@ -139,7 +139,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "ls",
+                                       :command "true",
                                        :tasks   {:first  false
                                                  :second false}}])
                states-nil)))
@@ -148,7 +148,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "ls",
+                                       :command "true",
                                        :tasks   {:first  true
                                                  :second true}}])
                states-disable)))
@@ -157,7 +157,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "this-is-not-a-command",
+                                       :command "false",
                                        :tasks   {:first  true
                                                  :second true}}])
                states-enable)))))
@@ -176,7 +176,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "ls",
+                                       :command "true",
                                        :tasks   {:first true
                                                  :second  false}}])
                states-disable)))
@@ -185,7 +185,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "ls",
+                                       :command "true",
                                        :tasks   {:first true}}])
                states-disable)))
 
@@ -193,7 +193,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "this-is-not-a-command",
+                                       :command "false",
                                        :tasks   {:first  false
                                                  :second true}}])
                states-enable)))
@@ -202,7 +202,7 @@
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
-                                       :command "this-is-not-a-command",
+                                       :command "false",
                                        :tasks   {:second true}}])
                states-enable))))))
 
