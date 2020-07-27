@@ -10,6 +10,22 @@ file. This change log follows the conventions of
 
 
 
+## [1.3.0] - 2020-07-27
+### Added
+
+- complete unit tests
+
+### Changed
+
+- extract functionality to "poll-task-states" to improve unit test
+  coverage
+
+## Fixed
+
+- fix calling "shell-exec" with empty command
+
+
+
 ## [1.2.0] - 2020-07-13
 ### Added
 
@@ -73,3 +89,4 @@ file. This change log follows the conventions of
 [1.0.0]:  https://github.com/mzuther/moccafaux/commits/v1.0.0
 [1.1.0]:  https://github.com/mzuther/moccafaux/commits/v1.1.0
 [1.2.0]:  https://github.com/mzuther/moccafaux/commits/v1.2.0
+[1.3.0]:  https://github.com/mzuther/moccafaux/commits/v1.3.0

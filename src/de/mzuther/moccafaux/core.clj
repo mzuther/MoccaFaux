@@ -104,7 +104,7 @@
   (ProcessObject. process state))
 
 
-(defn- shell-exec
+(defn shell-exec
   "Execute command in a shell compatible to the Bourne shell and
   fork process if fork? is true.
 
@@ -112,6 +112,9 @@
   keyword is :forked if command has forked, :success if command has
   exited with a zero exit code, and :failed in any other case."
   [command fork?]
+  {:pre [(string? command)
+         (seq command)
+         (boolean? fork?)]}
   (io! (let [new-process (popen/popen ["sh" "-c" command])]
          (if-not fork?
            (if (zero? (popen/exit-code new-process))
@@ -126,13 +129,13 @@
                (make-process-object new-process :failed)))))))
 
 
-(defn- watch-exec
+(defn watch-exec
   "Execute watch and apply exit state of watch to all defined tasks.
 
   Return a map containing the watch's name and an exit state for every
-  defined task (:enable if exit state was *non-zero*, :disable if it
-  was *zero*).  In case a watch has not been enabled or assigned to a
-  task, set exit state to nil.
+  task in task-names (:enable if exit state was *non-zero*, :disable
+  if it was *zero*).  In case a watch has not been enabled or assigned
+  to a task, set exit state to nil.
 
   Background information: energy saving is enabled when a watch is
   enabled and the respective shell command failed (returned a
@@ -141,7 +144,7 @@
 
   For example, 'grep' and 'pgrep' return a *non-zero* exit code when
   they do not find any matching lines or processes."
-  [[watch-name {:keys [enabled command tasks]}]]
+  [task-names [watch-name {:keys [enabled command tasks]}]]
   (let [save-energy? (when enabled
                        (let [{exit-state :state} (shell-exec command false)]
                          (if (= exit-state :failed)
@@ -207,6 +210,21 @@
         nil)))
 
 
+(defn poll-task-states
+  "Execute all watches and gather states for each task in task-names.
+
+  Return new task states, consisting of a map containing keys for all
+  defined tasks with values according to \"enable-disable-or-nil?\"."
+  [task-names watches]
+  (let [exit-states   (map (partial watch-exec task-names)
+                           watches)
+        extract-state (fn [task] (->> exit-states
+                                      (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
+                                      (enable-disable-or-nil?)
+                                      (vector task)))]
+    (into {} (map extract-state task-names))))
+
+
 (defn update-status
   "Execute all watches and gather states for all defined tasks.  Should
   a task state differ from its current state, update the state and
@@ -215,12 +233,7 @@
   Return new task states, consisting of a map containing keys for all
   defined tasks with values according to \"enable-disable-or-nil?\"."
   [_]
-  (let [exit-states     (map watch-exec defined-watches)
-        extract-state   (fn [task] (->> exit-states
-                                        (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
-                                        (enable-disable-or-nil?)
-                                        (vector task)))
-        new-task-states (into {} (map extract-state task-names))
+  (let [new-task-states (poll-task-states defined-watches task-names)
         update-needed?  (not= new-task-states @task-states)
         update-task     (fn [task]
                           (let [new-state (sp/select-one [task] new-task-states)
