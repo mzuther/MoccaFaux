@@ -210,6 +210,21 @@
         nil)))
 
 
+(defn poll-task-states
+  "Execute all watches and gather states for all defined tasks.
+
+  Return new task states, consisting of a map containing keys for all
+  defined tasks with values according to \"enable-disable-or-nil?\"."
+  [defined-watches task-names]
+  (let [exit-states   (map (partial watch-exec task-names)
+                           defined-watches)
+        extract-state (fn [task] (->> exit-states
+                                      (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
+                                      (enable-disable-or-nil?)
+                                      (vector task)))]
+    (into {} (map extract-state task-names))))
+
+
 (defn update-status
   "Execute all watches and gather states for all defined tasks.  Should
   a task state differ from its current state, update the state and
@@ -218,13 +233,7 @@
   Return new task states, consisting of a map containing keys for all
   defined tasks with values according to \"enable-disable-or-nil?\"."
   [_]
-  (let [exit-states     (map (partial watch-exec task-names)
-                             defined-watches)
-        extract-state   (fn [task] (->> exit-states
-                                        (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
-                                        (enable-disable-or-nil?)
-                                        (vector task)))
-        new-task-states (into {} (map extract-state task-names))
+  (let [new-task-states (poll-task-states defined-watches task-names)
         update-needed?  (not= new-task-states @task-states)
         update-task     (fn [task]
                           (let [new-state (sp/select-one [task] new-task-states)
