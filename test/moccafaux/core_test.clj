@@ -262,3 +262,192 @@
     (testing "mixed vector with string \"disable\""
       (is (= (moccafaux/enable-disable-or-nil? [nil 1 2 0 :enable "disable"])
              :enable)))))
+
+
+
+(deftest poll-task-states
+  (testing "no task"
+    (let [task-names []]
+
+      (testing "assigned to non-existing task"
+        (let [watches [[:one-disable {:enabled true
+                                      :command "true"
+                                      :tasks   {:first true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {})))) ))
+
+
+  (testing "one task"
+    (let [task-names [:first]]
+
+      (testing "watch is disabled"
+        (let [watches [[:one-nil {:enabled false
+                                  :command ""
+                                  :tasks   {:first true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first nil}))))
+
+      (testing "watch is running"
+        (let [watches [[:one-disable {:enabled true
+                                      :command "true"
+                                      :tasks   {:first true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first :disable}))))
+
+      (testing "watch is not running"
+        (let [watches [[:one-enable {:enabled true
+                                     :command "false"
+                                     :tasks   {:first true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first :enable}))))))
+
+
+
+  (testing "two tasks"
+    (let [task-names [:first :second]]
+
+      (testing "both disabled"
+        (let [watches [[:first-enable {:enabled false
+                                       :command ""
+                                       :tasks   {:first true}}]
+                       [:second-nil   {:enabled false
+                                       :command ""
+                                       :tasks   {:second true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  nil
+                  :second nil}))))
+
+      (testing "both running"
+        (let [watches [[:first-enable {:enabled true
+                                       :command "true"
+                                       :tasks   {:first true}}]
+                       [:second-nil   {:enabled true
+                                       :command "true"
+                                       :tasks   {:second true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  :disable
+                  :second :disable}))))
+
+      (testing "both not running"
+        (let [watches [[:first-enable {:enabled true
+                                       :command "false"
+                                       :tasks   {:first true}}]
+                       [:second-nil   {:enabled true
+                                       :command "false"
+                                       :tasks   {:second true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  :enable
+                  :second :enable}))))
+
+      (testing "first not running, second disabled"
+        (let [watches [[:first-enable {:enabled true
+                                       :command "false"
+                                       :tasks   {:first true}}]
+                       [:second-nil   {:enabled false
+                                       :command ""
+                                       :tasks   {:first true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  :enable
+                  :second nil}))))
+
+      (testing "first not running, second running"
+        (let [watches [[:first-enable   {:enabled true
+                                         :command "false"
+                                         :tasks   {:first true}}]
+                       [:second-disable {:enabled true
+                                         :command "true"
+                                         :tasks   {:second true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  :enable
+                  :second :disable}))))
+
+      (testing "combined watch (disabled)"
+        (let [watches [[:combined-enable {:enabled false
+                                          :command ""
+                                          :tasks   {:first  true
+                                                    :second true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  nil
+                  :second nil}))))
+
+      (testing "combined watch (running)"
+        (let [watches [[:combined-enable {:enabled true
+                                          :command "true"
+                                          :tasks   {:first  true
+                                                    :second true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  :disable
+                  :second :disable}))))
+
+      (testing "combined watch (not running)"
+        (let [watches [[:combined-enable {:enabled true
+                                          :command "false"
+                                          :tasks   {:first  true
+                                                    :second true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  :enable
+                  :second :enable}))))))
+
+
+
+  (testing "multiple tasks & watches"
+    (let [task-names [:first :second]]
+      (testing "both running (all watches enabled)"
+        (let [watches [[:first-disable  {:enabled true
+                                         :command "true"
+                                         :tasks   {:first true}}]
+                       [:second-disable {:enabled true
+                                         :command "true"
+                                         :tasks   {:second true}}]
+                       [:both-enable    {:enabled true,
+                                         :command "true"
+                                         :tasks   {:first  true
+                                                   :second true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  :disable
+                  :second :disable}))))
+
+      (testing "both running (one watch disabled)"
+        (let [watches [[:first-disable  {:enabled true
+                                         :command "true"
+                                         :tasks   {:first true}}]
+                       [:second-disable {:enabled true
+                                         :command "true"
+                                         :tasks   {:second true}}]
+                       [:both-nil       {:enabled false,
+                                         :command ""
+                                         :tasks   {:first  true
+                                                   :second true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  :disable
+                  :second :disable}))))
+
+      (testing "both not running (combined watch)"
+        (let [watches [[:first-enable  {:enabled true
+                                        :command "false"
+                                        :tasks   {:first true}}]
+                       [:second-enable {:enabled true
+                                        :command "false"
+                                        :tasks   {:second true}}]
+                       [:both-disable    {:enabled true,
+                                          :command "true"
+                                          :tasks   {:first  true
+                                                    :second true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  :disable
+                  :second :disable}))))
+
+      (testing "both not running (separate watches)"
+        (let [watches [[:first-disable  {:enabled true
+                                         :command "true"
+                                         :tasks   {:first true}}]
+                       [:second-disable {:enabled true
+                                         :command "true"
+                                         :tasks   {:second true}}]
+                       [:both-enable    {:enabled true,
+                                         :command "false"
+                                         :tasks   {:first  true
+                                                   :second true}}]]]
+          (is (= (moccafaux/poll-task-states task-names watches)
+                 {:first  :disable
+                  :second :disable})))))))
