@@ -35,7 +35,7 @@
 
 
 (deftest watch-exec
-  (testing "no-task"
+  (testing "no task"
     (let [task-names   nil
           states-empty (moccafaux/make-task-states :test [])]
 
@@ -57,13 +57,13 @@
 
 
 
-  (testing "one-task"
+  (testing "one task"
     (let [task-names     [:first]
           states-nil     (moccafaux/make-task-states :test [(moccafaux/make-task-state :first nil)])
           states-disable (moccafaux/make-task-states :test [(moccafaux/make-task-state :first :disable)])
           states-enable  (moccafaux/make-task-states :test [(moccafaux/make-task-state :first :enable)])]
 
-      (testing "disabled-task"
+      (testing "disabled task"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled false,
@@ -71,7 +71,7 @@
                                        :tasks   {:first false}}])
                states-nil)))
 
-      (testing "enabled-task-explicit"
+      (testing "enabled task (explicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
@@ -79,14 +79,14 @@
                                        :tasks   {:first false}}])
                states-nil)))
 
-      (testing "enabled-task-implicit"
+      (testing "enabled task (implicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:command "true",
                                        :tasks   {:first false}}])
                states-nil)))
 
-      (testing "no-assigned-task-explicit"
+      (testing "no assigned task (explicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
@@ -94,7 +94,7 @@
                                        :tasks   {:first false}}])
                states-nil)))
 
-      (testing "no-assigned-task-implicit"
+      (testing "no assigned task (implicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
@@ -117,7 +117,7 @@
                                        :tasks   {:first true}}])
                states-enable)))))
 
-  (testing "two-tasks"
+  (testing "two tasks"
     (let [task-names     [:first :second]
           states-nil     (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  nil)
                                                             (moccafaux/make-task-state :second nil)])
@@ -126,7 +126,7 @@
           states-enable  (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  :enable)
                                                             (moccafaux/make-task-state :second :enable)])]
 
-      (testing "disabled-task"
+      (testing "disabled task"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled false,
@@ -135,7 +135,7 @@
                                                  :second false}}])
                states-nil)))
 
-      (testing "no-assigned-task"
+      (testing "no assigned task"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
@@ -164,15 +164,14 @@
 
 
 
-  (testing "one-of-two-tasks"
+  (testing "one of two tasks"
     (let [task-names     [:first :second]
           states-disable (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  :disable)
                                                             (moccafaux/make-task-state :second nil)])
           states-enable  (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  nil)
-                                                            (moccafaux/make-task-state :second :enable)])
-          ]
+                                                            (moccafaux/make-task-state :second :enable)])]
 
-      (testing "disable-task-explicit"
+      (testing "disable task (explicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
@@ -181,7 +180,7 @@
                                                  :second  false}}])
                states-disable)))
 
-      (testing "disable-task-implicit"
+      (testing "disable task (implicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
@@ -189,7 +188,7 @@
                                        :tasks   {:first true}}])
                states-disable)))
 
-      (testing "enable-task-explicit"
+      (testing "enable task (explicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
@@ -198,13 +197,21 @@
                                                  :second true}}])
                states-enable)))
 
-      (testing "enable-task-implicit"
+      (testing "enable task (implicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
                                        :command "false",
                                        :tasks   {:second true}}])
                states-enable))))))
+
+
+
+(deftest update-energy-saving
+  (testing "nil"
+    (testing "throws exception?"
+      (is (thrown? IllegalArgumentException
+                   (moccafaux/update-energy-saving nil))))))
 
 
 
