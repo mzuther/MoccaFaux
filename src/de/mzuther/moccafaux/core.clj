@@ -233,7 +233,7 @@
   Return new task states, consisting of a map containing keys for all
   defined tasks with values according to \"enable-disable-or-nil?\"."
   [_]
-  (let [new-task-states (poll-task-states defined-watches task-names)
+  (let [new-task-states (poll-task-states task-names defined-watches)
         update-needed?  (not= new-task-states @task-states)
         update-task     (fn [task]
                           (let [new-state (sp/select-one [task] new-task-states)
