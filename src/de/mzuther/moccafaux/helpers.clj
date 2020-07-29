@@ -7,6 +7,15 @@
 (def padding   "          ")
 
 
+(defn get-application-and-version
+  "Get name and version number of application.
+
+  Return a formatted string."
+  []
+  (str "MoccaFaux v"
+       (version/get-version "de.mzuther" "moccafaux.core")))
+
+
 (defn get-timestamp
   "Get current local time.
 
@@ -56,8 +65,7 @@
   "Print a nicely formatted header with application name and version
   number."
   []
-  (let [raw-header   (str "MoccaFaux v" (version/get-version "de.mzuther"
-                                                             "moccafaux.core"))
+  (let [raw-header   (get-application-and-version)
         header-width (count raw-header)
         left-margin  (quot (- page-width 2 header-width) 2)
         right-margin (- page-width 2 header-width left-margin)
