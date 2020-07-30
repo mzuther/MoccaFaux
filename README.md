@@ -27,6 +27,10 @@ execute another set of commands (called *tasks*):
 
 1. wait, rinse and repeat the above
 
+On exit, **MoccaFaux** *tries* to execute a command in order to
+disable every task.  This usually works, but as it happens in a
+critical phase during shutdown, you should not rely on this behaviour.
+
 All *watches*, *tasks* and commands as well as their number can be
 defined by the user.
 
