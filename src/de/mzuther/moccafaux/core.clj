@@ -284,6 +284,21 @@
       (sp/select-one [:options :help] args)
         (io! (helpers/exit-after-printing-help-and-errors args 0)))
 
+    ;; clean up when application ends (System/exit or Ctrl-C)
+    (.addShutdownHook (Runtime/getRuntime)
+                      (Thread. #(io! (newline)
+                                     (helpers/printfln "%s  Shutting down gracefully..."
+                                                       (helpers/get-timestamp))
+
+                                     ;; disable all tasks, regardless of current state
+                                     (doseq [task task-names]
+                                       (update-energy-saving task :disable))
+
+                                     (newline)
+                                     (helpers/printfln "%s  Good-bye."
+                                                       (helpers/get-timestamp))
+                                     (newline))))
+
     ;; display settings and enter main loop
     (let [interval (sp/select-one [:scheduler :probing-interval] preferences)]
       (io! (helpers/print-settings interval task-names watch-names)
