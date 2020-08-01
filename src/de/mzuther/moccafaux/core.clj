@@ -1,11 +1,11 @@
 (ns de.mzuther.moccafaux.core
   (:require [de.mzuther.moccafaux.helpers :as helpers]
+            [de.mzuther.moccafaux.tray :as tray]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :as cli]
             [chime.core :as chime]
-            [clj-systemtray.core :as tray]
             [com.rpl.specter :as sp]
             [popen])
   (:gen-class))
@@ -48,9 +48,6 @@
 
 (def watch-names
   (sp/select [sp/MAP-KEYS] defined-watches))
-
-
-(def tray-icon (ref nil))
 
 
 ;; empty ref forces an update on first call to "update-status"
@@ -276,42 +273,6 @@
                   {:error-handler (fn [e] (io! (println (str e))))}))
 
 
-(defn menu-clicked
-  "Handle clicks in the menu of a tray bar icon and print name of
-  corresponding menu item."
-  [event]
-  (let [item-name (.getActionCommand ^java.awt.event.ActionEvent event)]
-    (io! (newline)
-         (helpers/printfln "%s  Click:    %s"
-                           (helpers/get-timestamp)
-                           item-name)
-         (newline)
-         (helpers/print-line \-))
-
-    (condp = item-name
-      "Quit" (System/exit 0)
-      nil)))
-
-
-(defn show-systemtray
-  "Create tray icon with an attached menu and add it to the system's
-  tray bar.
-
-  Return instance of created TrayIcon class."
-  [icon-resource-path]
-  (dosync
-    (when @tray-icon
-      (tray/remove-tray-icon! @tray-icon)
-      (ref-set tray-icon nil))
-
-    (let [icon-url (io/resource icon-resource-path)
-          menu     (tray/popup-menu
-                     (tray/menu-item (helpers/get-application-and-version) menu-clicked)
-                     (tray/separator)
-                     (tray/menu-item "Quit" menu-clicked))]
-      (ref-set tray-icon (tray/make-tray-icon! icon-url menu)))))
-
-
 (defn -main
   "Print information on application and schedule watchers."
   [& unparsed-args]
@@ -342,9 +303,8 @@
                                                        (helpers/get-timestamp))
                                      (newline))))
 
-
-    (when (tray/tray-supported?)
-      (show-systemtray "moccafaux-fruit.png"))
+    ;; add default icon to system tray bar
+    (tray/add-to-traybar "moccafaux-fruit.png")
 
     ;; display settings and enter main loop
     (let [interval (sp/select-one [:scheduler :probing-interval] preferences)]
