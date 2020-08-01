@@ -51,10 +51,10 @@ As this application was conceived as a substitue for **[caffeine]**, I
 originally called it **Muckefuck** (pronounced [ˈmʊkəfʊk]).  This is
 the colloquial German term for [coffee substitute].
 
-However, most English speakers would consider this name to contain a
-certain bad word (which it doesn't).  I liked the name though, so I
-changed it to **Mocca faux**, which some believe is the French origin
-of **Muckefuck**.
+On second thought, English speakers might reason that this name
+contains a certain "bad" word (it doesn't).  I liked the name, though,
+so I changed it to **Mocca faux**, which some believe is the French
+origin of **Muckefuck**.
 
 ## Installation
 
@@ -101,7 +101,8 @@ The settings file constitutes of a map with three key-value pairs:
 
 ```javascript
 {
-  "scheduler": {
+  "settings": {
+    "add-traybar-icon": true,
     "probing-interval": 60
   },
 
@@ -120,7 +121,12 @@ numbers.  First of all, that looks very LISP-like and let's you feel
 like a geek.  Also, and slightly more important, it prevents problems
 during conversion to Clojure/Java data.  You have been warned.
 
-### Scheduler
+### Settings
+
+#### `add-traybar-icon`
+
+Set this to `false` if you do not want **MoccaFaux** to add an icon to
+your system's tray bar.
 
 #### `probing-interval`
 

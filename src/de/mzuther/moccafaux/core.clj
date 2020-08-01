@@ -304,11 +304,13 @@
                                      (newline))))
 
     ;; add default icon to system tray bar
-    (tray/add-to-traybar "moccafaux-fruit.png")
+    (when (sp/select-one [:settings :add-traybar-icon] preferences)
+      (tray/add-to-traybar "moccafaux-fruit.png"))
 
     ;; display settings and enter main loop
-    (let [interval (sp/select-one [:scheduler :probing-interval] preferences)]
-      (io! (helpers/print-settings interval task-names watch-names)
+    (let [interval     (sp/select-one [:settings :probing-interval] preferences)
+          traybar-icon (sp/select-one [:settings :add-traybar-icon] preferences)]
+      (io! (helpers/print-settings interval traybar-icon task-names watch-names)
            (newline)
            (helpers/print-line \-))
 

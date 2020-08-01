@@ -1,5 +1,6 @@
 {
-  "scheduler": {
+  "settings": {
+    "add-traybar-icon": true,
     "probing-interval": 60
   },
 

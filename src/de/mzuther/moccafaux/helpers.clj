@@ -97,7 +97,7 @@
 
 (defn print-settings
   "Print settings using a nice layout."
-  [interval task-names watch-names]
+  [interval add-traybar-icon task-names watch-names]
   (let [padding-tasks   (format "%s  Tasks:    " padding)
         padding-watches (format "%s  Watches:  " padding)
         padding-rest    (format "%s            " padding)]
@@ -105,6 +105,9 @@
     (printfln "%s  Probe:    every %s seconds"
               (get-timestamp)
               interval)
+    (printfln "%s  Traybar:  %s"
+              padding
+              add-traybar-icon)
     (newline)
     (print-list padding-tasks padding-rest "-"
                 (map name task-names))
