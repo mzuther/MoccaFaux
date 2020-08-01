@@ -231,7 +231,8 @@
 (defn update-status
   "Execute all watches and gather states for all defined tasks.  Should
   a task state differ from its current state, update the state and
-  toggle its energy saving state by executing a command.
+  toggle its energy saving state by executing a command.  Also update
+  system tray icon according to new task states.
 
   Return new task states, consisting of a map containing keys for all
   defined tasks with values according to \"enable-disable-or-nil?\"."
@@ -247,7 +248,19 @@
       (update-task task))
     (when update-needed?
       (io! (newline)
-           (helpers/print-line \-)))
+           (helpers/print-line \-))
+
+      ;; add or update system tray icon
+      (when (sp/select-one [:settings :add-traybar-icon] preferences)
+        (let [collected-states   (vals new-task-states)
+              icon-resource-path (cond
+                                   (every? #{:disable} collected-states)
+                                     "moccafaux-roasted.png"
+                                   (some #{:disable} collected-states)
+                                     "moccafaux-fermented.png"
+                                   :else
+                                     "moccafaux-fruit.png")]
+          (tray/add-to-traybar icon-resource-path))))
     (dosync
       (ref-set task-states
                new-task-states))))
@@ -302,10 +315,6 @@
                                      (helpers/printfln "%s  Good-bye."
                                                        (helpers/get-timestamp))
                                      (newline))))
-
-    ;; add default icon to system tray bar
-    (when (sp/select-one [:settings :add-traybar-icon] preferences)
-      (tray/add-to-traybar "moccafaux-fruit.png"))
 
     ;; display settings and enter main loop
     (let [interval     (sp/select-one [:settings :probing-interval] preferences)
