@@ -215,13 +215,15 @@
 
 
 (defn poll-task-states
-  "Execute all watches and gather states for each task in task-names.
+  "Execute all watches in parallel threads and gather states for each
+  task in task-names.
 
   Return new task states, consisting of a map containing keys for all
   defined tasks with values according to \"enable-disable-or-nil?\"."
   [task-names watches]
-  (let [exit-states   (map (partial watch-exec task-names)
-                           watches)
+  (let [exit-states   (->> watches
+                           (pmap (partial watch-exec task-names))
+                           (doall))
         extract-state (fn [task] (->> exit-states
                                       (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
                                       (enable-disable-or-nil?)
