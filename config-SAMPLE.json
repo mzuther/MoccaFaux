@@ -6,12 +6,12 @@
 
   "tasks": {
     "sleep": {
-      "enable": {
+      "active": {
         "message": "allow computer to save energy",
         "command": "xautolock -time 10 -locker 'systemctl suspend' -detectsleep",
         "fork":    true
       },
-      "disable": {
+      "idle": {
         "message": "keep computer awake",
         "command": "xautolock -exit",
         "fork":    false
@@ -19,12 +19,12 @@
     },
 
     "dpms": {
-      "enable": {
+      "active": {
         "message": "allow screen to save energy",
         "command": "xset dpms 0 600 900",
         "fork":    false
       },
-      "disable": {
+      "idle": {
         "message": "keep screen awake",
         "command": "xset -dpms",
         "fork":    false

@@ -58,12 +58,12 @@
 
 
   (testing "one task"
-    (let [task-names     [:first]
-          states-nil     (moccafaux/make-task-states :test [(moccafaux/make-task-state :first nil)])
-          states-disable (moccafaux/make-task-states :test [(moccafaux/make-task-state :first :disable)])
-          states-enable  (moccafaux/make-task-states :test [(moccafaux/make-task-state :first :enable)])]
+    (let [task-names    [:first]
+          states-nil    (moccafaux/make-task-states :test [(moccafaux/make-task-state :first nil)])
+          states-idle   (moccafaux/make-task-states :test [(moccafaux/make-task-state :first :idle)])
+          states-active (moccafaux/make-task-states :test [(moccafaux/make-task-state :first :active)])]
 
-      (testing "disabled task"
+      (testing "disabled task (explicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled false,
@@ -107,7 +107,7 @@
                                       {:enabled true,
                                        :command "true",
                                        :tasks   {:first true}}])
-               states-disable)))
+               states-idle)))
 
       (testing "non-zero exit code"
         (is (= (moccafaux/watch-exec task-names
@@ -115,18 +115,18 @@
                                       {:enabled true,
                                        :command "false",
                                        :tasks   {:first true}}])
-               states-enable)))))
+               states-active)))))
 
   (testing "two tasks"
-    (let [task-names     [:first :second]
-          states-nil     (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  nil)
-                                                            (moccafaux/make-task-state :second nil)])
-          states-disable (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  :disable)
-                                                            (moccafaux/make-task-state :second :disable)])
-          states-enable  (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  :enable)
-                                                            (moccafaux/make-task-state :second :enable)])]
+    (let [task-names    [:first :second]
+          states-nil    (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  nil)
+                                                           (moccafaux/make-task-state :second nil)])
+          states-idle   (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  :idle)
+                                                           (moccafaux/make-task-state :second :idle)])
+          states-active (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  :active)
+                                                           (moccafaux/make-task-state :second :active)])]
 
-      (testing "disabled task"
+      (testing "disabled task (explicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled false,
@@ -151,7 +151,7 @@
                                        :command "true",
                                        :tasks   {:first  true
                                                  :second true}}])
-               states-disable)))
+               states-idle)))
 
       (testing "non-zero exit code"
         (is (= (moccafaux/watch-exec task-names
@@ -160,50 +160,50 @@
                                        :command "false",
                                        :tasks   {:first  true
                                                  :second true}}])
-               states-enable)))))
+               states-active)))))
 
 
 
   (testing "one of two tasks"
-    (let [task-names     [:first :second]
-          states-disable (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  :disable)
-                                                            (moccafaux/make-task-state :second nil)])
-          states-enable  (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  nil)
-                                                            (moccafaux/make-task-state :second :enable)])]
+    (let [task-names    [:first :second]
+          states-idle   (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  :idle)
+                                                           (moccafaux/make-task-state :second nil)])
+          states-active (moccafaux/make-task-states :test [(moccafaux/make-task-state :first  nil)
+                                                           (moccafaux/make-task-state :second :active)])]
 
-      (testing "disable task (explicit)"
+      (testing "idle task (explicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
                                        :command "true",
-                                       :tasks   {:first true
-                                                 :second  false}}])
-               states-disable)))
+                                       :tasks   {:first  true
+                                                 :second false}}])
+               states-idle)))
 
-      (testing "disable task (implicit)"
+      (testing "idle task (implicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
                                        :command "true",
                                        :tasks   {:first true}}])
-               states-disable)))
+               states-idle)))
 
-      (testing "enable task (explicit)"
+      (testing "active task (explicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
                                        :command "false",
                                        :tasks   {:first  false
                                                  :second true}}])
-               states-enable)))
+               states-active)))
 
-      (testing "enable task (implicit)"
+      (testing "active task (implicit)"
         (is (= (moccafaux/watch-exec task-names
                                      [:test
                                       {:enabled true,
                                        :command "false",
                                        :tasks   {:second true}}])
-               states-enable))))))
+               states-active))))))
 
 
 
@@ -215,53 +215,53 @@
 
 
 
-(deftest enable-disable-or-nil?
+(deftest active-idle-or-nil?
   (testing "nil"
     (testing "empty vector"
-      (is (= (moccafaux/enable-disable-or-nil? [])
+      (is (= (moccafaux/active-idle-or-nil? [])
              nil)))
 
     (testing "single nil"
-      (is (= (moccafaux/enable-disable-or-nil? [nil])
+      (is (= (moccafaux/active-idle-or-nil? [nil])
              nil)))
 
     (testing "multiple nil"
-      (is (= (moccafaux/enable-disable-or-nil? [nil nil nil nil nil nil])
+      (is (= (moccafaux/active-idle-or-nil? [nil nil nil nil nil nil])
              nil))))
 
 
 
-  (testing ":disable"
-    (testing "single :disable"
-      (is (= (moccafaux/enable-disable-or-nil? [:disable])
-             :disable)))
+  (testing ":idle"
+    (testing "single :idle"
+      (is (= (moccafaux/active-idle-or-nil? [:idle])
+             :idle)))
 
-    (testing "multiple :disable"
-      (is (= (moccafaux/enable-disable-or-nil? [:disable :disable :disable :disable])
-             :disable)))
+    (testing "multiple :idle"
+      (is (= (moccafaux/active-idle-or-nil? [:idle :idle :idle :idle])
+             :idle)))
 
     (testing "mixed vector"
-      (is (= (moccafaux/enable-disable-or-nil? [nil 1 2 0 :enable :disable])
-             :disable))))
+      (is (= (moccafaux/active-idle-or-nil? [nil 1 2 0 :active :idle])
+             :idle))))
 
 
 
-  (testing ":enable"
-    (testing "single :enable"
-      (is (= (moccafaux/enable-disable-or-nil? [:enable])
-             :enable)))
+  (testing ":active"
+    (testing "single :active"
+      (is (= (moccafaux/active-idle-or-nil? [:active])
+             :active)))
 
-    (testing "single string \"disable\""
-      (is (= (moccafaux/enable-disable-or-nil? ["disable"])
-             :enable)))
+    (testing "single string \"idle\""
+      (is (= (moccafaux/active-idle-or-nil? ["idle"])
+             :active)))
 
     (testing "unrelated scalar value"
-      (is (= (moccafaux/enable-disable-or-nil? [1])
-             :enable)))
+      (is (= (moccafaux/active-idle-or-nil? [1])
+             :active)))
 
-    (testing "mixed vector with string \"disable\""
-      (is (= (moccafaux/enable-disable-or-nil? [nil 1 2 0 :enable "disable"])
-             :enable)))))
+    (testing "mixed vector with string \"idle\""
+      (is (= (moccafaux/active-idle-or-nil? [nil 1 2 0 :active "idle"])
+             :active)))))
 
 
 
@@ -270,9 +270,9 @@
     (let [task-names []]
 
       (testing "assigned to non-existing task"
-        (let [watches [[:one-disable {:enabled true
-                                      :command "true"
-                                      :tasks   {:first true}}]]]
+        (let [watches [[:one-idle {:enabled true
+                                   :command "true"
+                                   :tasks   {:first true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
                  {})))) ))
 
@@ -288,18 +288,18 @@
                  {:first nil}))))
 
       (testing "watch is running"
-        (let [watches [[:one-disable {:enabled true
-                                      :command "true"
-                                      :tasks   {:first true}}]]]
+        (let [watches [[:one-idle {:enabled true
+                                   :command "true"
+                                   :tasks   {:first true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first :disable}))))
+                 {:first :idle}))))
 
       (testing "watch is not running"
-        (let [watches [[:one-enable {:enabled true
+        (let [watches [[:one-active {:enabled true
                                      :command "false"
                                      :tasks   {:first true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first :enable}))))))
+                 {:first :active}))))))
 
 
 
@@ -307,7 +307,7 @@
     (let [task-names [:first :second]]
 
       (testing "both disabled"
-        (let [watches [[:first-enable {:enabled false
+        (let [watches [[:first-active {:enabled false
                                        :command ""
                                        :tasks   {:first true}}]
                        [:second-nil   {:enabled false
@@ -318,51 +318,51 @@
                   :second nil}))))
 
       (testing "both running"
-        (let [watches [[:first-enable {:enabled true
+        (let [watches [[:first-active {:enabled true
                                        :command "true"
                                        :tasks   {:first true}}]
                        [:second-nil   {:enabled true
                                        :command "true"
                                        :tasks   {:second true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first  :disable
-                  :second :disable}))))
+                 {:first  :idle
+                  :second :idle}))))
 
       (testing "both not running"
-        (let [watches [[:first-enable {:enabled true
+        (let [watches [[:first-active {:enabled true
                                        :command "false"
                                        :tasks   {:first true}}]
                        [:second-nil   {:enabled true
                                        :command "false"
                                        :tasks   {:second true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first  :enable
-                  :second :enable}))))
+                 {:first  :active
+                  :second :active}))))
 
       (testing "first not running, second disabled"
-        (let [watches [[:first-enable {:enabled true
+        (let [watches [[:first-active {:enabled true
                                        :command "false"
                                        :tasks   {:first true}}]
                        [:second-nil   {:enabled false
                                        :command ""
                                        :tasks   {:first true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first  :enable
+                 {:first  :active
                   :second nil}))))
 
       (testing "first not running, second running"
-        (let [watches [[:first-enable   {:enabled true
-                                         :command "false"
-                                         :tasks   {:first true}}]
-                       [:second-disable {:enabled true
-                                         :command "true"
-                                         :tasks   {:second true}}]]]
+        (let [watches [[:first-active {:enabled true
+                                       :command "false"
+                                       :tasks   {:first true}}]
+                       [:second-idle  {:enabled true
+                                       :command "true"
+                                       :tasks   {:second true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first  :enable
-                  :second :disable}))))
+                 {:first  :active
+                  :second :idle}))))
 
       (testing "combined watch (disabled)"
-        (let [watches [[:combined-enable {:enabled false
+        (let [watches [[:combined-active {:enabled false
                                           :command ""
                                           :tasks   {:first  true
                                                     :second true}}]]]
@@ -371,83 +371,83 @@
                   :second nil}))))
 
       (testing "combined watch (running)"
-        (let [watches [[:combined-enable {:enabled true
+        (let [watches [[:combined-active {:enabled true
                                           :command "true"
                                           :tasks   {:first  true
                                                     :second true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first  :disable
-                  :second :disable}))))
+                 {:first  :idle
+                  :second :idle}))))
 
       (testing "combined watch (not running)"
-        (let [watches [[:combined-enable {:enabled true
+        (let [watches [[:combined-active {:enabled true
                                           :command "false"
                                           :tasks   {:first  true
                                                     :second true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first  :enable
-                  :second :enable}))))))
+                 {:first  :active
+                  :second :active}))))))
 
 
 
   (testing "multiple tasks & watches"
     (let [task-names [:first :second]]
       (testing "both running (all watches enabled)"
-        (let [watches [[:first-disable  {:enabled true
-                                         :command "true"
-                                         :tasks   {:first true}}]
-                       [:second-disable {:enabled true
-                                         :command "true"
-                                         :tasks   {:second true}}]
-                       [:both-enable    {:enabled true,
-                                         :command "true"
-                                         :tasks   {:first  true
-                                                   :second true}}]]]
+        (let [watches [[:first-idle  {:enabled true
+                                      :command "true"
+                                      :tasks   {:first true}}]
+                       [:second-idle {:enabled true
+                                      :command "true"
+                                      :tasks   {:second true}}]
+                       [:both-active {:enabled true,
+                                      :command "true"
+                                      :tasks   {:first  true
+                                                :second true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first  :disable
-                  :second :disable}))))
+                 {:first  :idle
+                  :second :idle}))))
 
       (testing "both running (one watch disabled)"
-        (let [watches [[:first-disable  {:enabled true
-                                         :command "true"
-                                         :tasks   {:first true}}]
-                       [:second-disable {:enabled true
-                                         :command "true"
-                                         :tasks   {:second true}}]
-                       [:both-nil       {:enabled false,
-                                         :command ""
-                                         :tasks   {:first  true
-                                                   :second true}}]]]
+        (let [watches [[:first-idle  {:enabled true
+                                      :command "true"
+                                      :tasks   {:first true}}]
+                       [:second-idle {:enabled true
+                                      :command "true"
+                                      :tasks   {:second true}}]
+                       [:both-nil    {:enabled false,
+                                      :command ""
+                                      :tasks   {:first  true
+                                                :second true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first  :disable
-                  :second :disable}))))
+                 {:first  :idle
+                  :second :idle}))))
 
       (testing "both not running (combined watch)"
-        (let [watches [[:first-enable  {:enabled true
+        (let [watches [[:first-active  {:enabled true
                                         :command "false"
                                         :tasks   {:first true}}]
-                       [:second-enable {:enabled true
+                       [:second-active {:enabled true
                                         :command "false"
                                         :tasks   {:second true}}]
-                       [:both-disable    {:enabled true,
-                                          :command "true"
-                                          :tasks   {:first  true
-                                                    :second true}}]]]
+                       [:both-idle     {:enabled true,
+                                        :command "true"
+                                        :tasks   {:first  true
+                                                  :second true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first  :disable
-                  :second :disable}))))
+                 {:first  :idle
+                  :second :idle}))))
 
       (testing "both not running (separate watches)"
-        (let [watches [[:first-disable  {:enabled true
-                                         :command "true"
-                                         :tasks   {:first true}}]
-                       [:second-disable {:enabled true
-                                         :command "true"
-                                         :tasks   {:second true}}]
-                       [:both-enable    {:enabled true,
-                                         :command "false"
-                                         :tasks   {:first  true
-                                                   :second true}}]]]
+        (let [watches [[:first-idle  {:enabled true
+                                      :command "true"
+                                      :tasks   {:first true}}]
+                       [:second-idle {:enabled true
+                                      :command "true"
+                                      :tasks   {:second true}}]
+                       [:both-active {:enabled true,
+                                      :command "false"
+                                      :tasks   {:first  true
+                                                :second true}}]]]
           (is (= (moccafaux/poll-task-states task-names watches)
-                 {:first  :disable
-                  :second :disable})))))))
+                 {:first  :idle
+                  :second :idle})))))))

@@ -72,14 +72,13 @@
 
 
 (defn make-task-state
-  "Create new TaskState object with given task ID and an exit state
-  (:enable if exit state was *non-zero*, :disable if it was *zero*
-  and nil if the watch was either disabled or not assigned to a
-  task)."
+  "Create new TaskState object with given task ID and current state
+  (:active if exit state was *non-zero*, :idle if it was *zero* and
+  nil if the watch was either disabled or not assigned to a task)."
   [id state]
   {:pre [(keyword? id)
          (or (nil? state)
-             (get #{:enable :disable} state))]}
+             (get #{:active :idle} state))]}
   (TaskState. id state))
 
 
@@ -109,9 +108,9 @@
   "Execute command in a shell compatible to the Bourne shell and
   fork process if fork? is true.
 
-  Return a vector of a keyword and the created process object.  The
-  keyword is :forked if command has forked, :success if command has
-  exited with a zero exit code, and :failed in any other case."
+  Return a ProcessObject with an exit state of :forked if command has
+  forked, :success if command has exited with a zero exit code, and
+  :failed in any other case."
   [command fork?]
   {:pre [(string? command)
          (seq command)
@@ -133,10 +132,8 @@
 (defn watch-exec
   "Execute watch and apply exit state of watch to all defined tasks.
 
-  Return a map containing the watch's name and an exit state for every
-  task in task-names (:enable if exit state was *non-zero*, :disable
-  if it was *zero*).  In case a watch has not been enabled or assigned
-  to a task, set exit state to nil.
+  Return a TaskStates object containing the watch's name and a
+  TaskState object for every task in task-names.
 
   Background information: energy saving is enabled when a watch is
   enabled and the respective shell command failed (returned a
@@ -149,8 +146,8 @@
   (let [save-energy? (when enabled
                        (let [{exit-state :state} (shell-exec command false)]
                          (if (= exit-state :failed)
-                           :enable
-                           :disable)))]
+                           :active
+                           :idle)))]
     ;; apply exit state of watch to all defined tasks (or nil when the
     ;; watch has not been assigned to the given task).
     (make-task-states watch-name
@@ -162,9 +159,9 @@
 
 
 (defn update-energy-saving
-  "Update the state of a task according to new-state (:enable
-  or :disable) and toggle its energy saving state by executing a
-  command.  Print new state and related information.
+  "Update the state of a task according to new-state (:active or :idle)
+  and toggle its energy saving state by executing a command.  Print
+  new state and related information.
 
   Return exit state of command (as described in shell-exec).
   "
@@ -178,10 +175,10 @@
         message   (sp/select-one [:message] prefs)]
     (io! (when command
            (newline)
-           (helpers/printfln "%s  Task:     %s %s"
-                             (helpers/get-timestamp) (name new-state) (name task))
-           (helpers/printfln "%s  State:    %s"
-                             helpers/padding message)
+           (helpers/printfln "%s  Task:     %s"
+                             (helpers/get-timestamp) (name task))
+           (helpers/printfln "%s  State:    %s -> %s"
+                             helpers/padding (name new-state) message)
            (helpers/printfln "%s  Command:  %s"
                              helpers/padding command)
            ;; execute command (finally)
@@ -191,20 +188,20 @@
              exit-state)))))
 
 
-(defn enable-disable-or-nil?
+(defn active-idle-or-nil?
   "Reduce coll to a scalar.
 
-  Return :disable if coll contains a :disable value.  If it doesn't
-  and contains a non-nil value, return :enable.  In any other case,
-  return nil."
+  Return :idle if coll contains an :idle value.  If it doesn't and
+  contains a non-nil value, return :active.  In any other case, return
+  nil."
   [coll]
   (let [coll (remove nil? coll)]
     (cond
       ;; disabling energy saving has preference
-      (some (partial = :disable) coll)
-        :disable
+      (some (partial = :idle) coll)
+        :idle
       (seq coll)
-        :enable
+        :active
       ;; be explicit; either the watch is disabled or has not been
       ;; assigned to the current task
       :else
@@ -216,14 +213,14 @@
   task in task-names.
 
   Return new task states, consisting of a map containing keys for all
-  defined tasks with values according to \"enable-disable-or-nil?\"."
+  defined tasks with values according to \"active-idle-or-nil?\"."
   [task-names watches]
   (let [exit-states   (->> watches
                            (pmap (partial watch-exec task-names))
                            (doall))
         extract-state (fn [task] (->> exit-states
                                       (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
-                                      (enable-disable-or-nil?)
+                                      (active-idle-or-nil?)
                                       (vector task)))]
     (into {} (map extract-state task-names))))
 
@@ -235,7 +232,7 @@
   system tray icon according to new task states.
 
   Return new task states, consisting of a map containing keys for all
-  defined tasks with values according to \"enable-disable-or-nil?\"."
+  defined tasks with values according to \"active-idle-or-nil?\"."
   [_]
   (let [new-task-states (poll-task-states task-names defined-watches)
         update-needed?  (not= new-task-states @task-states)
@@ -254,9 +251,9 @@
       (when (sp/select-one [:settings :add-traybar-icon] preferences)
         (let [collected-states   (vals new-task-states)
               icon-resource-path (cond
-                                   (every? #{:disable} collected-states)
+                                   (every? #{:idle} collected-states)
                                      "moccafaux-roasted.png"
-                                   (some #{:disable} collected-states)
+                                   (some #{:idle} collected-states)
                                      "moccafaux-fermented.png"
                                    :else
                                      "moccafaux-fruit.png")]
@@ -307,9 +304,9 @@
                                      (helpers/printfln "%s  Shutting down gracefully..."
                                                        (helpers/get-timestamp))
 
-                                     ;; disable all tasks, regardless of current state
+                                     ;; set all tasks to "idle", regardless of current state
                                      (doseq [task task-names]
-                                       (update-energy-saving task :disable))
+                                       (update-energy-saving task :idle))
 
                                      (newline)
                                      (helpers/printfln "%s  Good-bye."
