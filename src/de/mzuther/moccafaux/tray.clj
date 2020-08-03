@@ -27,21 +27,29 @@
 
 (defn add-to-traybar
   "Create tray icon with an attached menu and add it to the system's
-  tray bar.
+  tray bar.  Add current task-states to menu and use icon located at
+  icon-resource-path.
 
   Return instance of created TrayIcon class."
-  [icon-resource-path]
+  [task-states icon-resource-path]
   (when (tray/tray-supported?)
     (dosync
       (when @current-icon
         (tray/remove-tray-icon! @current-icon)
         (ref-set current-icon nil))
 
-      (let [icon-url (io/resource icon-resource-path)
-            menu     (tray/popup-menu
-                       (tray/menu-item (helpers/get-application-and-version)
-                                       handle-menu-click)
-                       (tray/separator)
-                       (tray/menu-item "Quit"
-                                       handle-menu-click))]
+      (let [icon-url   (io/resource icon-resource-path)
+            states     (for [task-state task-states]
+                         (str (-> task-state first name)
+                              " -> "
+                              (-> task-state second name)))
+            menu-items (concat [(tray/menu-item (helpers/get-application-and-version) handle-menu-click)
+                                (tray/separator)]
+
+                               (for [state (sort states)]
+                                 (tray/menu-item state handle-menu-click))
+
+                               [(tray/separator)
+                                (tray/menu-item "Quit" handle-menu-click)])
+            menu       (apply tray/popup-menu menu-items)]
         (ref-set current-icon (tray/make-tray-icon! icon-url menu))))))

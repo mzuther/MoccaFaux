@@ -257,7 +257,7 @@
                                      "moccafaux-fermented.png"
                                    :else
                                      "moccafaux-fruit.png")]
-          (tray/add-to-traybar icon-resource-path))))
+          (tray/add-to-traybar new-task-states icon-resource-path))))
     (dosync
       (ref-set task-states
                new-task-states))))
