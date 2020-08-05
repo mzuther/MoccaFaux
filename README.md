@@ -241,9 +241,13 @@ state of this *watch* changes.  Each key's value should be set to
 You may also set a key to `false`.  This is identical to not adding
 the *task* to this map.
 
+## Contributors
+
+- [Martin Zuther][]: maintainer
+
 ## License
 
-*Copyright (c) 2020 [Martin Zuther]*
+*Copyright (c) 2020 [Martin Zuther] and contributors*
 
 This program and the accompanying materials are made available under
 the terms of the Eclipse Public License 2.0 which is available at
