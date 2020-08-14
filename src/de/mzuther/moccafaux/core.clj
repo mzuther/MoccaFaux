@@ -21,7 +21,7 @@
 (ns de.mzuther.moccafaux.core
   (:require [de.mzuther.moccafaux.helpers :as helpers]
             [de.mzuther.moccafaux.tray :as tray]
-            [clojure.data.json :as json]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :as cli]
@@ -39,12 +39,12 @@
 (def preferences
   (try (let [;; "io/file" takes care of line separators
              file-name  (io! (io/file (System/getProperty "user.home")
-                                      ".config" "moccafaux" "config.json"))
-             user-prefs (json/read-str (slurp file-name)
-                                       :key-fn keyword)]
+                                      ".config" "moccafaux" "config.edn"))
+             user-prefs (edn/read-string {:eof nil}
+                                         (slurp file-name))]
          (if (map? user-prefs)
            user-prefs
-           (throw (Exception. "JSON error (not handled by library)"))))
+           (throw (Exception. "EDN error (not handled by library)"))))
        (catch Throwable e
          (io! (helpers/print-header)
               (newline)

@@ -1,0 +1,49 @@
+{
+  :settings {
+    :add-traybar-icon true,
+    :probing-interval 60
+  },
+
+  :tasks {
+    :sleep {
+      :active { :message "allow computer to save energy",
+                :command "xautolock -time 10 -locker 'systemctl suspend' -detectsleep",
+                :fork    true },
+
+      :idle   { :message "keep computer awake",
+                :command "xautolock -exit",
+                :fork    false } },
+
+    :dpms {
+      :active { :message "allow screen to save energy",
+                :command "xset dpms 0 600 900",
+                :fork    false },
+
+      :idle   { :message "keep screen awake",
+                :command "xset -dpms",
+                :fork    false } }
+  },
+
+  :watches {
+    :important-processes {
+      :enabled true,
+      :command "pgrep -af '^dpkg\\b|^pacman\\b|^dar\\s|^/\\S*rsync\\b|^ssh(d:)?\\s|^unison\\S*'",
+      :tasks   { :sleep true } },
+
+    :audio {
+      :enabled true,
+      :command "pactl list short sinks | grep -E '\\bRUNNING$'",
+      :tasks   { :sleep true } },
+
+    :video {
+      :enabled true,
+      :command "pgrep -l '^(celluloid|skypeforlinux|vlc)$'",
+      :tasks   { :dpms  true,
+                 :sleep true } },
+
+    :zfs-scrub {
+      :enabled true,
+      :command "zpool status | grep -E '(resilver|scrub) in progress'",
+      :tasks   { :sleep true } }
+  }
+}

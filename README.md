@@ -12,23 +12,23 @@ execute another set of commands (called *tasks*):
 
 1. execute all *watches* and record their exit codes
 
-1. assign exit code of each *watch* to one or more *tasks* (such
-   as `let-there-be-light` or `i-cant-get-no-sleep`)
+1. assign exit code of each *watch* to one or more *tasks* (such as
+   `:let-there-be-light` or `:i-cant-get-no-sleep`)
 
 1. update state of each *task*:
 
-   * `active` if *any* of the assigned *watches* returned a *non-zero*
-     exit code
+   * `:active` if *any* of the assigned *watches* returned a
+     *non-zero* exit code
 
-   * `idle` in any other case
+   * `:idle` in any other case
 
 1. in case the state of a *task* differs from its previous state,
    execute a command depending on its new state
 
 1. wait, rinse and repeat the above
 
-On exit, **MoccaFaux** *tries* to execute the `idle` command for every
-task.  This usually works, but as it happens in a critical phase
+On exit, **MoccaFaux** *tries* to execute the `:idle` command for
+every task.  This usually works, but as it happens in a critical phase
 during shutdown, you should not rely on this behaviour.
 
 All *watches*, *tasks* and commands as well as their number can be
@@ -86,49 +86,45 @@ MALLOC_ARENA_MAX=4 java -jar moccafaux.jar
 ## Options
 
 **MoccaFaux** reads its settings from the file
-`$HOME/.config/moccafaux/config.json`.  As the file name suggests,
-settings are expected to be in standard JSON format.
+`$HOME/.config/moccafaux/config.edn`.  As the file name suggests,
+settings are expected to be in Clojure's [EDN] format.
 
-To get started, use a copy of `config-SAMPLE.json` (found in the
+To get started, use a copy of `config-SAMPLE.edn` (found in the
 repository's root directory) and edit to taste.
 
 ### General structure
 
-*I find JSON terms a bit non-descript, so I'll use their Clojure
-equivalents instead.*
-
 The settings file constitutes of a map with three key-value pairs:
 
-```javascript
+```clojure
 {
-  "settings": {
-    "add-traybar-icon": true,
-    "probing-interval": 60
+  :settings {
+    :add-traybar-icon true,
+    :probing-interval 60
   },
 
-  "tasks": {
-    // ...
+  :tasks {
+    ;; ...
   },
 
-  "watches": {
-    // ...
-  },
+  :watches {
+    ;; ...
+  }
+}
 }
 ```
 
 I suggest that you restrict key names to ASCII characters, hyphens and
-numbers.  First of all, that looks very LISP-like and let's you feel
-like a geek.  Also, and slightly more important, it prevents problems
-during conversion to Clojure/Java data.  You have been warned.
+numbers.  However, Clojure does not force you to do so.
 
 ### Settings
 
-#### `add-traybar-icon`
+#### `:add-traybar-icon`
 
 Set this to `false` if you do not want **MoccaFaux** to add an icon to
 the system tray bar.
 
-#### `probing-interval`
+#### `:probing-interval`
 
 Sets the the interval for repeating the *watch* commands in seconds.
 I have found 60 seconds to be a good trade-off between resource usage
@@ -142,97 +138,88 @@ For something to actually happen, you have to define at least one
 *task*.  *Tasks* are basically switches that are turned on and off by
 **MoccaFaux**.
 
-They are defined in a map with two keys (`active` and `idle`),
-which in turn consist of maps containing three keys (`message`,
-`command` and `fork`):
+They are defined in a map with two keys (`:active` and `:idle`), which
+in turn consist of maps containing three keys (`:message`, `:command`
+and `:fork`):
 
-```javascript
-  "tasks": {
-    "sleep": {
-      "active": {
-        "message": "allow computer to save energy",
-        "command": "xautolock -time 15 -locker 'systemctl suspend' -detectsleep",
-        "fork":    true
-      },
-      "idle": {
-        "message": "keep computer awake",
-        "command": "xautolock -exit",
-        "fork":    false
-      }
-    },
+```clojure
+  :tasks {
+    :sleep {
+      :active { :message "allow computer to save energy",
+                :command "xautolock -time 10 -locker 'systemctl suspend' -detectsleep",
+                :fork    true },
 
-    // ...
+      :idle   { :message "keep computer awake",
+                :command "xautolock -exit",
+                :fork    false } },
+
+    ;; ...
   }
 ```
 
-#### `active` and `idle`
+#### `:active` and `:idle`
 
 When *any* of the assigned *watch* commands returns a *non-zero* exit
-code, the command defined under `active` is executed.  Otherwise, the
-`idle` command is executed.
+code, the command defined under `:active` is executed.  Otherwise, the
+`:idle` command is executed.
 
 *When you start **MoccaFaux**, each task will be executed once
 according to the current state of your watches.*
 
-#### `command`
+#### `:command`
 
-`command` is the actual command and is executed in a shell environment
+This is the actual command and is executed in a shell environment
 compatible to the Bourne shell (`sh -c "your | commands && come ;
 here"`).  This way, you can use your beloved pipes and logical tests.
 
 *Note: backslashes have to be quoted by doubling (`\\`).*
 
-#### `fork`
+#### `:fork`
 
 **MoccaFaux** normally runs a command and waits for it to exit.
 However, some commands need to continue running in the background.  In
-such a case, set `fork` to `true`.  Note that forked commands are not
+such a case, set `:fork` to `true`.  Note that forked commands are not
 monitored, so you have to kill them manually when watch states change.
 When you exit **MoccaFaux**, forked commands are usually killed
 automatically.
 
-#### `message`
+#### `:message`
 
-Use `message` to describe what is happening in plain text.  It will be
-shown on the command line and may help you with debugging (or
-understanding the JSON file in a year or so).
+Use `:message` to describe what is happening in plain text.  It will
+be shown on the command line and may help you with debugging (or
+understanding the EDN file in a year or so).
 
 ### Watches
 
 *Watches* are commands that are run periodically.  When their exit
 code changes, they may trigger the toggling of a *task*.
 
-*Watches* are defined in a map of three keys (`enabled`, `command` and
-`tasks`):
+*Watches* are defined in a map of three keys (`:enabled`, `:command`
+and `:tasks`):
 
-```javascript
-  "watches": {
-    "video": {
-      "enabled": true,
-      "command": "pgrep -l '^(celluloid|skypeforlinux|vlc)$'",
+```clojure
+  :watches {
+    :video {
+      :enabled true,
+      :command "pgrep -l '^(celluloid|skypeforlinux|vlc)$'",
+      :tasks   { :dpms  true,
+                 :sleep true } },
 
-      "tasks": {
-        "dpms":  true,
-        "sleep": true
-      }
-    },
-
-    // ...
+    ;; ...
   }
 ```
 
-#### `enabled`
+#### `:enabled`
 
 Set to `false ` if you do not want a *watch* to be executed.  Use this
 when you only need it occasionally or want to keep your time-proven
 settings where you can easily find them in the future.
 
-#### `command`
+#### `:command`
 
-`command` is identical to its twin in *tasks* except that it may not
-fork.
+This is identical to its twin in *tasks* except that it may not fork.
 
-#### `tasks`
+#### `:tasks`
 
 Map of keys naming the *tasks* that should be updated whenever the
 state of this *watch* changes.  Each key's value should be set to
@@ -268,6 +255,7 @@ https://www.gnu.org/software/classpath/license.html.
 [coffee substitute]:  https://en.wikipedia.org/wiki/Coffee_substitute
 [inotify]:            https://en.wikipedia.org/wiki/Inotify
 [Gulp.watch]:         https://gulpjs.com/docs/en/getting-started/watching-files
+[EDN]:                http://edn-format.org/
 
 [Martin Zuther]:  http://www.mzuther.de/
 [release]:        https://github.com/mzuther/moccafaux/releases
