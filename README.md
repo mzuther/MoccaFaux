@@ -98,19 +98,18 @@ The settings file constitutes of a map with three key-value pairs:
 
 ```clojure
 {
-  :settings {
-    :add-traybar-icon true,
-    :probing-interval 60
-  },
+   :settings {
+      :add-traybar-icon true
+      :probing-interval 60
+   }
 
-  :tasks {
-    ;; ...
-  },
+   :tasks {
+      ;; see below
+   }
 
-  :watches {
-    ;; ...
-  }
-}
+   :watches {
+      ;; see below
+   }
 }
 ```
 
@@ -144,16 +143,21 @@ and `:fork`):
 
 ```clojure
   :tasks {
-    :sleep {
-      :active { :message "allow computer to save energy",
-                :command "xautolock -time 10 -locker 'systemctl suspend' -detectsleep",
-                :fork    true },
+     :sleep {
+        :active {
+           :message "allow computer to save energy"
+           :command "xautolock -time 10 -locker 'systemctl suspend' -detectsleep"
+           :fork    true
+        }
 
-      :idle   { :message "keep computer awake",
-                :command "xautolock -exit",
-                :fork    false } },
+        :idle {
+           :message "keep computer awake"
+           :command "xautolock -exit"
+           :fork    false
+        }
+    }
 
-    ;; ...
+    ;; and so on ...
   }
 ```
 
@@ -199,13 +203,16 @@ and `:tasks`):
 
 ```clojure
   :watches {
-    :video {
-      :enabled true,
-      :command "pgrep -l '^(celluloid|skypeforlinux|vlc)$'",
-      :tasks   { :dpms  true,
-                 :sleep true } },
+     :video {
+        :enabled true
+        :command "pgrep -l '^(celluloid|skypeforlinux|vlc)$'"
+        :tasks {
+           :dpms  true
+           :sleep true
+        }
+    }
 
-    ;; ...
+    ;; and so on ...
   }
 ```
 
