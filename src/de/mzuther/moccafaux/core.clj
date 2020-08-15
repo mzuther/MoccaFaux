@@ -272,11 +272,11 @@
         (let [collected-states   (vals new-task-states)
               icon-resource-path (cond
                                    (every? #{:idle} collected-states)
-                                     "moccafaux-roasted.png"
+                                     "moccafaux-full.png"
                                    (some #{:idle} collected-states)
-                                     "moccafaux-fermented.png"
+                                     "moccafaux-medium.png"
                                    :else
-                                     "moccafaux-fruit.png")]
+                                     "moccafaux-empty.png")]
           (tray/add-to-traybar new-task-states icon-resource-path))))
     (dosync
       (ref-set task-states
