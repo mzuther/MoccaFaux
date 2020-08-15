@@ -1,6 +1,27 @@
+;; MoccaFaux
+;; =========
+;; Adapt power management to changes in the environment
+;;
+;; Copyright (c) 2020 Martin Zuther (http://www.mzuther.de/) and
+;; contributors
+;;
+;; This program and the accompanying materials are made available under
+;; the terms of the Eclipse Public License 2.0 which is available at
+;; http://www.eclipse.org/legal/epl-2.0.
+;;
+;; This Source Code may also be made available under the following
+;; Secondary Licenses when the conditions for such availability set forth
+;; in the Eclipse Public License, v. 2.0 are satisfied: GNU General
+;; Public License as published by the Free Software Foundation, either
+;; version 2 of the License, or (at your option) any later version, with
+;; the GNU Classpath Exception which is available at
+;; https://www.gnu.org/software/classpath/license.html.
+
+
 (ns de.mzuther.moccafaux.core
   (:require [de.mzuther.moccafaux.helpers :as helpers]
-            [clojure.data.json :as json]
+            [de.mzuther.moccafaux.tray :as tray]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.tools.cli :as cli]
@@ -18,12 +39,12 @@
 (def preferences
   (try (let [;; "io/file" takes care of line separators
              file-name  (io! (io/file (System/getProperty "user.home")
-                                      ".config" "moccafaux" "config.json"))
-             user-prefs (json/read-str (slurp file-name)
-                                       :key-fn keyword)]
+                                      ".config" "moccafaux" "config.edn"))
+             user-prefs (edn/read-string {:eof nil}
+                                         (slurp file-name))]
          (if (map? user-prefs)
            user-prefs
-           (throw (Exception. "JSON error (not handled by library)"))))
+           (throw (Exception. "EDN error (not handled by library)"))))
        (catch Throwable e
          (io! (helpers/print-header)
               (newline)
@@ -71,14 +92,13 @@
 
 
 (defn make-task-state
-  "Create new TaskState object with given task ID and an exit state
-  (:enable if exit state was *non-zero*, :disable if it was *zero*
-  and nil if the watch was either disabled or not assigned to a
-  task)."
+  "Create new TaskState object with given task ID and current state
+  (:active if exit state was *non-zero*, :idle if it was *zero* and
+  nil if the watch was either disabled or not assigned to a task)."
   [id state]
   {:pre [(keyword? id)
          (or (nil? state)
-             (get #{:enable :disable} state))]}
+             (get #{:active :idle} state))]}
   (TaskState. id state))
 
 
@@ -108,9 +128,9 @@
   "Execute command in a shell compatible to the Bourne shell and
   fork process if fork? is true.
 
-  Return a vector of a keyword and the created process object.  The
-  keyword is :forked if command has forked, :success if command has
-  exited with a zero exit code, and :failed in any other case."
+  Return a ProcessObject with an exit state of :forked if command has
+  forked, :success if command has exited with a zero exit code, and
+  :failed in any other case."
   [command fork?]
   {:pre [(string? command)
          (seq command)
@@ -132,10 +152,8 @@
 (defn watch-exec
   "Execute watch and apply exit state of watch to all defined tasks.
 
-  Return a map containing the watch's name and an exit state for every
-  task in task-names (:enable if exit state was *non-zero*, :disable
-  if it was *zero*).  In case a watch has not been enabled or assigned
-  to a task, set exit state to nil.
+  Return a TaskStates object containing the watch's name and a
+  TaskState object for every task in task-names.
 
   Background information: energy saving is enabled when a watch is
   enabled and the respective shell command failed (returned a
@@ -148,8 +166,8 @@
   (let [save-energy? (when enabled
                        (let [{exit-state :state} (shell-exec command false)]
                          (if (= exit-state :failed)
-                           :enable
-                           :disable)))]
+                           :active
+                           :idle)))]
     ;; apply exit state of watch to all defined tasks (or nil when the
     ;; watch has not been assigned to the given task).
     (make-task-states watch-name
@@ -161,9 +179,9 @@
 
 
 (defn update-energy-saving
-  "Update the state of a task according to new-state (:enable
-  or :disable) and toggle its energy saving state by executing a
-  command.  Print new state and related information.
+  "Update the state of a task according to new-state (:active or :idle)
+  and toggle its energy saving state by executing a command.  Print
+  new state and related information.
 
   Return exit state of command (as described in shell-exec).
   "
@@ -177,10 +195,10 @@
         message   (sp/select-one [:message] prefs)]
     (io! (when command
            (newline)
-           (helpers/printfln "%s  Task:     %s %s"
-                             (helpers/get-timestamp) (name new-state) (name task))
-           (helpers/printfln "%s  State:    %s"
-                             helpers/padding message)
+           (helpers/printfln "%s  Task:     %s"
+                             (helpers/get-timestamp) (name task))
+           (helpers/printfln "%s  State:    %s -> %s"
+                             helpers/padding (name new-state) message)
            (helpers/printfln "%s  Command:  %s"
                              helpers/padding command)
            ;; execute command (finally)
@@ -190,20 +208,20 @@
              exit-state)))))
 
 
-(defn enable-disable-or-nil?
+(defn active-idle-or-nil?
   "Reduce coll to a scalar.
 
-  Return :disable if coll contains a :disable value.  If it doesn't
-  and contains a non-nil value, return :enable.  In any other case,
-  return nil."
+  Return :idle if coll contains an :idle value.  If it doesn't and
+  contains a non-nil value, return :active.  In any other case, return
+  nil."
   [coll]
   (let [coll (remove nil? coll)]
     (cond
       ;; disabling energy saving has preference
-      (some (partial = :disable) coll)
-        :disable
+      (some (partial = :idle) coll)
+        :idle
       (seq coll)
-        :enable
+        :active
       ;; be explicit; either the watch is disabled or has not been
       ;; assigned to the current task
       :else
@@ -211,16 +229,18 @@
 
 
 (defn poll-task-states
-  "Execute all watches and gather states for each task in task-names.
+  "Execute all watches in parallel threads and gather states for each
+  task in task-names.
 
   Return new task states, consisting of a map containing keys for all
-  defined tasks with values according to \"enable-disable-or-nil?\"."
+  defined tasks with values according to \"active-idle-or-nil?\"."
   [task-names watches]
-  (let [exit-states   (map (partial watch-exec task-names)
-                           watches)
+  (let [exit-states   (->> watches
+                           (pmap (partial watch-exec task-names))
+                           (doall))
         extract-state (fn [task] (->> exit-states
                                       (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
-                                      (enable-disable-or-nil?)
+                                      (active-idle-or-nil?)
                                       (vector task)))]
     (into {} (map extract-state task-names))))
 
@@ -228,10 +248,11 @@
 (defn update-status
   "Execute all watches and gather states for all defined tasks.  Should
   a task state differ from its current state, update the state and
-  toggle its energy saving state by executing a command.
+  toggle its energy saving state by executing a command.  Also update
+  system tray icon according to new task states.
 
   Return new task states, consisting of a map containing keys for all
-  defined tasks with values according to \"enable-disable-or-nil?\"."
+  defined tasks with values according to \"active-idle-or-nil?\"."
   [_]
   (let [new-task-states (poll-task-states task-names defined-watches)
         update-needed?  (not= new-task-states @task-states)
@@ -244,9 +265,22 @@
       (update-task task))
     (when update-needed?
       (io! (newline)
-           (helpers/print-line \-)))
-    (dosync (ref-set task-states
-                     new-task-states))))
+           (helpers/print-line \-))
+
+      ;; add or update system tray icon
+      (when (sp/select-one [:settings :add-traybar-icon] preferences)
+        (let [collected-states   (vals new-task-states)
+              icon-resource-path (cond
+                                   (every? #{:idle} collected-states)
+                                     "moccafaux-full.png"
+                                   (some #{:idle} collected-states)
+                                     "moccafaux-medium.png"
+                                   :else
+                                     "moccafaux-empty.png")]
+          (tray/add-to-traybar new-task-states icon-resource-path))))
+    (dosync
+      (ref-set task-states
+               new-task-states))))
 
 
 (defn- start-scheduler
@@ -284,9 +318,25 @@
       (sp/select-one [:options :help] args)
         (io! (helpers/exit-after-printing-help-and-errors args 0)))
 
+    ;; clean up when application ends (System/exit or Ctrl-C)
+    (.addShutdownHook (Runtime/getRuntime)
+                      (Thread. #(io! (newline)
+                                     (helpers/printfln "%s  Shutting down gracefully..."
+                                                       (helpers/get-timestamp))
+
+                                     ;; set all tasks to "idle", regardless of current state
+                                     (doseq [task task-names]
+                                       (update-energy-saving task :idle))
+
+                                     (newline)
+                                     (helpers/printfln "%s  Good-bye."
+                                                       (helpers/get-timestamp))
+                                     (newline))))
+
     ;; display settings and enter main loop
-    (let [interval (sp/select-one [:scheduler :probing-interval] preferences)]
-      (io! (helpers/print-settings interval task-names watch-names)
+    (let [interval     (sp/select-one [:settings :probing-interval] preferences)
+          traybar-icon (sp/select-one [:settings :add-traybar-icon] preferences)]
+      (io! (helpers/print-settings interval traybar-icon task-names watch-names)
            (newline)
            (helpers/print-line \-))
 

@@ -1,4 +1,4 @@
-(defproject de.mzuther/moccafaux.core "1.3.1"
+(defproject de.mzuther/moccafaux.core "1.4.0"
   :description "Adapt power management to changes in the environment."
   :url "https://github.com/mzuther/moccafaux"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
@@ -7,6 +7,7 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/data.json "1.0.0"]
                  [org.clojure/tools.cli "1.0.194"]
+                 [clj-systemtray "0.2.1"]
                  [com.rpl/specter "1.1.3"]
                  [jarohen/chime "0.3.2"]
                  [popen "0.3.1"]
@@ -15,6 +16,7 @@
   :main ^:skip-aot de.mzuther.moccafaux.core
   :target-path "target/%s"
   :uberjar-name "moccafaux.jar"
+  :resource-paths ["resources"]
 
   :profiles {:debug   {:debug       true
                        ;; :injections  [(newline)

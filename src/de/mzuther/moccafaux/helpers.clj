@@ -1,3 +1,23 @@
+;; MoccaFaux
+;; =========
+;; Adapt power management to changes in the environment
+;;
+;; Copyright (c) 2020 Martin Zuther (http://www.mzuther.de/) and
+;; contributors
+;;
+;; This program and the accompanying materials are made available under
+;; the terms of the Eclipse Public License 2.0 which is available at
+;; http://www.eclipse.org/legal/epl-2.0.
+;;
+;; This Source Code may also be made available under the following
+;; Secondary Licenses when the conditions for such availability set forth
+;; in the Eclipse Public License, v. 2.0 are satisfied: GNU General
+;; Public License as published by the Free Software Foundation, either
+;; version 2 of the License, or (at your option) any later version, with
+;; the GNU Classpath Exception which is available at
+;; https://www.gnu.org/software/classpath/license.html.
+
+
 (ns de.mzuther.moccafaux.helpers
   (:require [clojure.string :as string]
             [trptcolin.versioneer.core :as version]))
@@ -5,6 +25,15 @@
 
 (def page-width 80)
 (def padding   "          ")
+
+
+(defn get-application-and-version
+  "Get name and version number of application.
+
+  Return a formatted string."
+  []
+  (str "MoccaFaux v"
+       (version/get-version "de.mzuther" "moccafaux.core")))
 
 
 (defn get-timestamp
@@ -56,8 +85,7 @@
   "Print a nicely formatted header with application name and version
   number."
   []
-  (let [raw-header   (str "MoccaFaux v" (version/get-version "de.mzuther"
-                                                             "moccafaux.core"))
+  (let [raw-header   (get-application-and-version)
         header-width (count raw-header)
         left-margin  (quot (- page-width 2 header-width) 2)
         right-margin (- page-width 2 header-width left-margin)
@@ -89,7 +117,7 @@
 
 (defn print-settings
   "Print settings using a nice layout."
-  [interval task-names watch-names]
+  [interval add-traybar-icon task-names watch-names]
   (let [padding-tasks   (format "%s  Tasks:    " padding)
         padding-watches (format "%s  Watches:  " padding)
         padding-rest    (format "%s            " padding)]
@@ -97,6 +125,9 @@
     (printfln "%s  Probe:    every %s seconds"
               (get-timestamp)
               interval)
+    (printfln "%s  Traybar:  %s"
+              padding
+              add-traybar-icon)
     (newline)
     (print-list padding-tasks padding-rest "-"
                 (map name task-names))
