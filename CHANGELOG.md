@@ -10,6 +10,38 @@ file. This change log follows the conventions of
 
 
 
+## [1.4.0] - 2020-08-15
+### Added
+
+- add tray bar icon that changes according to state of tasks (*green*
+  if at least one task is idle, *red-yellow-green* if all tasks are
+  idle); please note that Java currently reports the wrong icon size
+  for i3bar
+
+- show current task states in tray bar menu
+
+- allow users to disable tray bar icon
+
+- check status of watches in parallel threads
+
+- clean up when application ends
+
+### Changed
+
+- breaking changes (please see README):
+
+  - rename task states to improve code readability
+
+  - read settings from EDN file
+
+  - change section "scheduler" in configuration file to "settings"
+
+- correctly licence files
+
+- update documentation
+
+
+
 ## [1.3.1] - 2020-07-27
 ## Fixed
 
@@ -98,3 +130,4 @@ file. This change log follows the conventions of
 [1.2.0]:  https://github.com/mzuther/moccafaux/commits/v1.2.0
 [1.3.0]:  https://github.com/mzuther/moccafaux/commits/v1.3.0
 [1.3.1]:  https://github.com/mzuther/moccafaux/commits/v1.3.1
+[1.4.0]:  https://github.com/mzuther/moccafaux/commits/v1.4.0
