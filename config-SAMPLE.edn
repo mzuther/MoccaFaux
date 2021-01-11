@@ -32,6 +32,11 @@
 
       :audio {
          :enabled true
+         :command "pgrep -l '^(clementine|deadbeef\\S+|quodlibet)$'"
+         :tasks   { :sleep true } }
+
+      :pulseaudio {
+         :enabled true
          :command "pactl list short sinks | grep -E '\\bRUNNING$'"
          :tasks   { :sleep true } }
 
