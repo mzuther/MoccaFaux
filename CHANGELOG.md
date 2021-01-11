@@ -10,6 +10,17 @@ file. This change log follows the conventions of
 
 
 
+## [1.4.1] - 2021-01-11
+### Changed
+
+- add applications and new section to sample configuration
+
+## Fixed
+
+- detect remote SSH logins correctly (new version of sshd)
+
+
+
 ## [1.4.0] - 2020-08-15
 ### Added
 
@@ -131,3 +142,4 @@ file. This change log follows the conventions of
 [1.3.0]:  https://github.com/mzuther/moccafaux/commits/v1.3.0
 [1.3.1]:  https://github.com/mzuther/moccafaux/commits/v1.3.1
 [1.4.0]:  https://github.com/mzuther/moccafaux/commits/v1.4.0
+[1.4.1]:  https://github.com/mzuther/moccafaux/commits/v1.4.1

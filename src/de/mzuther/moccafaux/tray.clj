@@ -2,7 +2,7 @@
 ;; =========
 ;; Adapt power management to changes in the environment
 ;;
-;; Copyright (c) 2020 Martin Zuther (http://www.mzuther.de/) and
+;; Copyright (c) 2020-2021 Martin Zuther (http://www.mzuther.de/) and
 ;; contributors
 ;;
 ;; This program and the accompanying materials are made available under

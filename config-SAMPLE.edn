@@ -27,17 +27,22 @@
    :watches {
       :important-processes {
          :enabled true
-         :command "pgrep -af '^dpkg\\b|^pacman\\b|^dar\\s|^/\\S*rsync\\b|^ssh(d:)?\\s|^unison\\S*'"
+         :command "pgrep -af '^dpkg\\b|^pacman\\b|^dar\\s|\\bgparted\\b|^k3b\\b|^/\\S*rsync\\b|^ssh\\s|^sshd:.*\\[priv\\]|^unison\\S*|^ffmpeg\\s'"
          :tasks   { :sleep true } }
 
       :audio {
+         :enabled true
+         :command "pgrep -l '^(clementine|deadbeef\\S+|quodlibet)$'"
+         :tasks   { :sleep true } }
+
+      :pulseaudio {
          :enabled true
          :command "pactl list short sinks | grep -E '\\bRUNNING$'"
          :tasks   { :sleep true } }
 
       :video {
          :enabled true
-         :command "pgrep -l '^(celluloid|skypeforlinux|vlc)$'"
+         :command "pgrep -l '^(celluloid|skypeforlinux|vlc|zoom)$'"
          :tasks   { :dpms  true
                     :sleep true } }
 

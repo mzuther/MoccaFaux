@@ -2,6 +2,8 @@
 
 *Adapt power management to changes in the environment.*
 
+![Screenshot](./resources/cover_photo_hapishane.png)
+
 **MoccaFaux** can be used to prevent the activation of screen savers
 and power-saving modes when certain conditions are met.  It was
 inspired by **[caffeine]**, but is much more flexible.
@@ -241,7 +243,7 @@ the *task* to this map.
 
 ## License
 
-*Copyright (c) 2020 [Martin Zuther] and contributors*
+*Copyright (c) 2020-2021 [Martin Zuther] and contributors*
 
 This program and the accompanying materials are made available under
 the terms of the Eclipse Public License 2.0 which is available at
