@@ -243,7 +243,7 @@ the *task* to this map.
 
 ## License
 
-*Copyright (c) 2020 [Martin Zuther] and contributors*
+*Copyright (c) 2020-2021 [Martin Zuther] and contributors*
 
 This program and the accompanying materials are made available under
 the terms of the Eclipse Public License 2.0 which is available at
