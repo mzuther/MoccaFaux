@@ -36,22 +36,23 @@
     :desc "display version and usage information"]])
 
 
-(def preferences
-  (try (let [;; "io/file" takes care of line separators
-             file-name  (io! (io/file (System/getProperty "user.home")
-                                      ".config" "moccafaux" "config.edn"))
-             user-prefs (edn/read-string {:eof nil}
-                                         (slurp file-name))]
-         (if (map? user-prefs)
-           user-prefs
+(defn import-edn [& path-parts]
+  (try (let [ ;; "io/file" takes care of line separators
+             file-handle (io! (apply io/file path-parts))
+             temp-data   (edn/read-string {:eof nil}
+                                          (slurp file-handle))]
+         (if (map? temp-data)
+           temp-data
            (throw (Exception. "EDN error (not handled by library)"))))
        (catch Throwable e
-         (io! (helpers/print-header)
-              (newline)
+         (io! (newline)
               (println (str e))
               (newline)
               (flush))
          (System/exit 1))))
+
+
+(def preferences (import-edn (System/getProperty "user.home") ".config" "moccafaux" "config.edn"))
 
 
 (def task-names
