@@ -42,7 +42,7 @@
 
       :video {
          :enabled true
-         :command "pgrep -l '^(celluloid|skypeforlinux|vlc|zoom)$'"
+         :command "pgrep -l '^(celluloid|skypeforlinux|teams|vlc|zoom)$'"
          :tasks   { :dpms  true
                     :sleep true } }
 
