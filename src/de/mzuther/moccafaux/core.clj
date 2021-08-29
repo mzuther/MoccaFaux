@@ -182,24 +182,27 @@
 (defn update-energy-saving
   "Update the state of a task according to new-state (:active or :idle)
   and toggle its energy saving state by executing a command.  Print
-  new state and related information.
+  new state, the reason for the update and related information.
 
   Return exit state of command (as described in shell-exec).
   "
-  [task new-state]
+  [task new-state reason]
   (when (nil? new-state)
     (throw (IllegalArgumentException.
              "eeek, a NIL entered \"update-energy-saving\"")))
   (let [prefs     (sp/select-one [:tasks task new-state] preferences)
         command   (sp/select-one [:command] prefs)
         fork?     (sp/select-one [:fork] prefs)
-        message   (sp/select-one [:message] prefs)]
+        message   (sp/select-one [:message] prefs)
+        reason    (if (seq reason)
+                    (string/join [" (" reason ")"])
+                    "")]
     (io! (when command
            (newline)
            (helpers/printfln "%s  Task:     %s"
                              (helpers/get-timestamp) (name task))
-           (helpers/printfln "%s  State:    %s -> %s"
-                             helpers/padding (name new-state) message)
+           (helpers/printfln "%s  State:    %s -> %s %s"
+                             helpers/padding (name new-state) message reason)
            (helpers/printfln "%s  Command:  %s"
                              helpers/padding command)
            ;; execute command (finally)
@@ -233,8 +236,10 @@
   "Execute all watches in parallel threads and gather states for each
   task in task-names.
 
-  Return new task states, consisting of a map containing keys for all
-  defined tasks with values according to \"active-idle-or-nil?\"."
+  Return new task states, consisting of a map containing:
+  :task-states - keys for all defined tasks with values according
+                 to \"active-idle-or-nil?\"
+  :idle-states - all current idle states for each task."
   [task-names watches]
   (let [exit-states   (->> watches
                            (pmap (partial watch-exec task-names))
@@ -242,8 +247,20 @@
         extract-state (fn [task] (->> exit-states
                                       (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
                                       (active-idle-or-nil?)
-                                      (vector task)))]
-    (into {} (map extract-state task-names))))
+                                      (vector task)))
+        extract-idle  (fn [task] (->> (map vector
+                                           (sp/select [sp/ALL :id]
+                                                      exit-states)
+                                           (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state]
+                                                      exit-states))
+                                      (filter #(= (second %) :idle))
+                                      (map first)
+                                      sort
+                                      (vector task)))
+        task-states   (into {} (map extract-state task-names))
+        idle-states   (into {} (map extract-idle task-names))]
+    {:task-states task-states
+     :idle-states idle-states}))
 
 
 (defn update-status
@@ -255,13 +272,18 @@
   Return new task states, consisting of a map containing keys for all
   defined tasks with values according to \"active-idle-or-nil?\"."
   [_]
-  (let [new-task-states (poll-task-states task-names defined-watches)
+  (let [polled-states   (poll-task-states task-names defined-watches)
+        new-task-states (sp/select-one [:task-states] polled-states)
+        new-idle-states (sp/select-one [:idle-states] polled-states)
         update-needed?  (not= new-task-states @task-states)
         update-task     (fn [task]
                           (let [new-state (sp/select-one [task] new-task-states)
                                 old-state (sp/select-one [task] @task-states)]
                             (when (not= new-state old-state)
-                              (update-energy-saving task new-state))))]
+                              (update-energy-saving task
+                                                    new-state
+                                                    (->> (get new-idle-states task)
+                                                         (string/join " "))))))]
     (doseq [task task-names]
       (update-task task))
     (when update-needed?
@@ -327,7 +349,7 @@
 
                                      ;; set all tasks to "idle", regardless of current state
                                      (doseq [task task-names]
-                                       (update-energy-saving task :idle))
+                                       (update-energy-saving task :idle "shutdown"))
 
                                      (newline)
                                      (helpers/printfln "%s  Good-bye."
