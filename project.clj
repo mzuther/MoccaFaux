@@ -4,12 +4,12 @@
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url  "https://www.eclipse.org/legal/epl-2.0/"}
 
-  :dependencies [[org.clojure/clojure "1.10.1"]
-                 [org.clojure/data.json "1.0.0"]
-                 [org.clojure/tools.cli "1.0.194"]
+  :dependencies [[org.clojure/clojure "1.10.3"]
+                 [org.clojure/data.json "2.4.0"]
+                 [org.clojure/tools.cli "1.0.206"]
                  [clj-systemtray "0.2.1"]
                  [com.rpl/specter "1.1.3"]
-                 [jarohen/chime "0.3.2"]
+                 [jarohen/chime "0.3.3"]
                  [popen "0.3.1"]
                  [trptcolin/versioneer "0.2.0"]]
 

@@ -6,20 +6,20 @@
 
    :tasks {
       :sleep {
-         :active { :message "allow computer to save energy"
+         :active { :message "computer is sleepy"
                    :command "xautolock -time 10 -locker 'systemctl suspend' -detectsleep"
                    :fork    true }
 
-         :idle   { :message "keep computer awake"
+         :idle   { :message "computer is wide awake"
                    :command "xautolock -exit"
                    :fork    false } }
 
       :dpms {
-         :active { :message "allow screen to save energy"
+         :active { :message "screen is sleepy"
                    :command "xset dpms 0 600 900"
                    :fork    false }
 
-         :idle   { :message "keep screen awake"
+         :idle   { :message "screen is wide awake"
                    :command "xset -dpms"
                    :fork    false } }
    }
