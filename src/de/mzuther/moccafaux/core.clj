@@ -364,3 +364,24 @@
            (helpers/print-line \-))
 
       (start-scheduler update-status interval))))
+
+
+(defn -initialize-repl
+  "Set up REPL debugging (effectively works like \"-main\", but without
+  command line parsing and scheduling)."
+  []
+  (io! (helpers/print-header))
+
+  (let [interval (sp/select-one [:settings :probing-interval] preferences)]
+    (io! (println)
+         (helpers/printfln "Evaluating the expression \"(update-status %d)\" ..."
+                           interval)
+         (println)
+         (helpers/print-line \-)
+
+         (let [result (update-status interval)]
+           (println)
+           (println "Here's the result.  Explore at your leisure! :)")
+           (println)
+
+           result))))
