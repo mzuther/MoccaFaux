@@ -284,9 +284,9 @@
                                                     new-state
                                                     (->> (get new-idle-states task)
                                                          (string/join " "))))))]
-    (doseq [task task-names]
-      (update-task task))
     (when update-needed?
+      (doseq [task task-names]
+        (update-task task))
       (io! (newline)
            (helpers/print-line \-))
 
