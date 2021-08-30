@@ -244,23 +244,22 @@
   (let [exit-states   (->> watches
                            (pmap (partial watch-exec task-names))
                            (doall))
-        extract-state (fn [task] (->> exit-states
-                                      (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
-                                      (active-idle-or-nil?)
-                                      (vector task)))
-        extract-idle  (fn [task] (->> (map vector
-                                           (sp/select [sp/ALL :id]
-                                                      exit-states)
-                                           (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state]
-                                                      exit-states))
-                                      (filter #(= (second %) :idle))
-                                      (map first)
-                                      sort
-                                      (vector task)))
-        task-states   (into {} (map extract-state task-names))
-        idle-states   (into {} (map extract-idle task-names))]
-    {:task-states task-states
-     :idle-states idle-states}))
+        extract-state (fn [task] {
+                                  :task         task
+                                  :exit-state   (->> exit-states
+                                                     (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state])
+                                                     (active-idle-or-nil?))
+                                  :idle-watches (->> (map vector
+                                                          (sp/select [sp/ALL :id]
+                                                                     exit-states)
+                                                          (sp/select [sp/ALL :states sp/ALL #(= (:id %) task) :state]
+                                                                     exit-states))
+                                                     (filter #(= (second %) :idle))
+                                                     (map first)
+                                                     sort
+                                                     vec)
+                                  })]
+    (map extract-state task-names)))
 
 
 (defn update-status
@@ -273,8 +272,10 @@
   defined tasks with values according to \"active-idle-or-nil?\"."
   [_]
   (let [polled-states   (poll-task-states task-names defined-watches)
-        new-task-states (sp/select-one [:task-states] polled-states)
-        new-idle-states (sp/select-one [:idle-states] polled-states)
+        new-task-states (zipmap (map :task polled-states)
+                                (map :exit-state polled-states))
+        new-idle-states (zipmap (map :task polled-states)
+                                (map :idle-watches polled-states))
         update-needed?  (not= new-task-states @task-states)
         update-task     (fn [task]
                           (let [new-state (sp/select-one [task] new-task-states)
