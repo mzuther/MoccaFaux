@@ -272,22 +272,14 @@
   Return new task states, consisting of a map containing keys for all
   defined tasks with values according to \"active-idle-or-nil?\"."
   [_]
-  (let [polled-states   (poll-task-states task-names defined-watches)
-        new-task-states (->> task-names
-                             (map #(vector % (get-in polled-states [% :exit-state])))
-                             (into {}))
-        new-idle-states (->> task-names
-                             (map #(vector % (get-in polled-states [% :idle-watches])))
-                             (into {}))
+  (let [new-task-states (poll-task-states task-names defined-watches)
         update-needed?  (not= new-task-states @task-states)
         update-task     (fn [task]
-                          (let [new-state (sp/select-one [task] new-task-states)
-                                old-state (sp/select-one [task] @task-states)]
-                            (when (not= new-state old-state)
-                              (update-energy-saving task
-                                                    new-state
-                                                    (->> (get new-idle-states task)
-                                                         (string/join " "))))))]
+                          (let [old-state    (sp/select-one [task :exit-state] @task-states)
+                                new-state    (sp/select-one [task :exit-state] new-task-states)
+                                idle-watches (sp/select-one [task :idle-watches] new-task-states)]
+                            (when (not= old-state new-state)
+                              (update-energy-saving task new-state (string/join " " idle-watches)))))]
     (when update-needed?
       (doseq [task task-names]
         (update-task task))
@@ -296,15 +288,18 @@
 
       ;; add or update system tray icon
       (when (sp/select-one [:settings :add-traybar-icon] preferences)
-        (let [collected-states   (vals new-task-states)
-              icon-resource-path (cond
-                                   (every? #{:idle} collected-states)
-                                     "moccafaux-full.png"
-                                   (some #{:idle} collected-states)
-                                     "moccafaux-medium.png"
-                                   :else
-                                     "moccafaux-empty.png")]
-          (tray/add-to-traybar new-task-states icon-resource-path))))
+        (let [collected-task-states (->> task-names
+                                         (map #(vector % (get-in new-task-states [% :exit-state])))
+                                         (into {}))
+              collected-states      (vals collected-task-states)
+              icon-resource-path    (cond
+                                      (every? #{:idle} collected-states)
+                                        "moccafaux-full.png"
+                                      (some #{:idle} collected-states)
+                                        "moccafaux-medium.png"
+                                      :else
+                                        "moccafaux-empty.png")]
+          (tray/add-to-traybar collected-task-states icon-resource-path))))
     (dosync
       (ref-set task-states
                new-task-states))))
