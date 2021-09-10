@@ -239,7 +239,7 @@
   Return new task states, consisting of a map containing:
   :task-states - keys for all defined tasks with values according
                  to \"active-idle-or-nil?\"
-  :idle-states - all current idle states for each task."
+  :idle-watches - all current idle states for each task."
   [task-names watches]
   (let [exit-states   (->> watches
                            (pmap (partial watch-exec task-names))
