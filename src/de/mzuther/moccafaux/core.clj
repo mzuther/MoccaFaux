@@ -281,15 +281,15 @@
   (let [new-task-states (poll-task-states task-names defined-watches)
         update-needed?  (not= new-task-states @task-states)
         update-task     (fn [task]
-                          (let [new-state             (sp/select-one [task :exit-state] new-task-states)
-                                old-state             (sp/select-one [task :exit-state] @task-states)
-                                state-changed?        (not= new-state old-state)
+                          (let [new-exit-state        (sp/select-one [task :exit-state] new-task-states)
+                                old-exit-state        (sp/select-one [task :exit-state] @task-states)
+                                exit-state-changed?   (not= new-exit-state old-exit-state)
                                 new-idle-watches      (sp/select-one [task :idle-watches] new-task-states)
                                 old-idle-watches      (sp/select-one [task :idle-watches] @task-states)
                                 idle-watches-changed? (not= new-idle-watches old-idle-watches)
                                 reason                (string/join " " new-idle-watches)]
                             (when idle-watches-changed?
-                              (update-energy-saving task new-state reason state-changed?))))]
+                              (update-energy-saving task new-exit-state reason exit-state-changed?))))]
     (when update-needed?
       (doseq [task task-names]
         (update-task task))
