@@ -12,10 +12,11 @@ In fact, **MoccaFaux** is a scheduler that executes commands (called
 _watches_), looks at their exit codes and then decides whether to
 execute another set of commands (called _tasks_):
 
-1. execute all _watches_ and record their exit codes
+1. execute all _watches_ (such as `:listening-to-music` or
+   `:system-backup-is-running`) and record their exit codes
 
 1. assign exit code of each _watch_ to one or more _tasks_ (such as
-   `:let-there-be-light` or `:i-cant-get-no-sleep`)
+   `:keep-computer-awake` or `:disable-screensaver`)
 
 1. update state of each _task_:
 
@@ -60,10 +61,29 @@ origin of **Muckefuck**.
 
 ## Installation
 
-You need an installation of Java. I currently use SE 14, but any
-version from SE 8 probably works just fine.
+You need an installation of Java. I currently use OpenJDK 11, but any
+Java version from 8 probably works just fine:
 
-If `git` and `lein` are installed on your system, run this:
+```bash
+# Debian-based systems
+sudo apt-get install default-jre
+```
+
+### Pre-built
+
+Simply download a pre-compiled JAR file from the [release] section and
+copy `moccafaux-x.x.x.jar` to a place of your liking.
+
+### Compilation
+
+To compile **MoccaFaux**, you'll also need _Git_ and _Leiningen_:
+
+```bash
+# Debian-based systems
+sudo apt-get install git leiningen
+```
+
+Then clone the repository and compile the application:
 
 ```bash
 git clone https://github.com/mzuther/moccafaux.git
@@ -71,9 +91,7 @@ cd moccafaux
 lein clean && lein uberjar
 ```
 
-Otherwise, simply download a pre-compiled JAR file from the [release]
-section. Finally, copy `moccafaux.jar` to a place of your liking and
-you're done.
+Finally, copy `target/uberjar/moccafaux.jar` to a place of your liking.
 
 ## Usage
 
@@ -92,7 +110,16 @@ MALLOC_ARENA_MAX=4 java -jar moccafaux.jar
 settings are expected to be in Clojure's [EDN] format.
 
 To get started, use a copy of `config-SAMPLE.edn` (found in the
-repository's root directory) and edit to taste.
+repository's root directory) and edit to taste. Depending on your
+system, you might also have to install some tools:
+
+```bash
+# Debian-based systems (pgrep, xautolock and xset)
+sudo apt-get install procps xautolock x11-xserver-utils
+
+# optional stuff (pactl and zpool)
+sudo apt-get install pulseaudio-utils zfsutils-linux
+```
 
 ### General structure
 
