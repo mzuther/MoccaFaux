@@ -73,6 +73,7 @@
 
 ;; empty ref forces an update on first call to "update-status"
 (def task-states (ref {}))
+(def exit-states (ref {}))
 
 
 (defrecord TaskState [id state]
@@ -279,7 +280,11 @@
   defined tasks with values according to \"active-idle-or-nil?\"."
   [_]
   (let [new-task-states (poll-task-states task-names defined-watches)
+        new-exit-states (->> task-names
+                             (map #(vector % (get-in new-task-states [% :exit-state])))
+                             (into {}))
         update-needed?  (not= new-task-states @task-states)
+        update-traybar? (not= new-exit-states @exit-states)
         update-task     (fn [task]
                           (let [new-exit-state        (sp/select-one [task :exit-state] new-task-states)
                                 old-exit-state        (sp/select-one [task :exit-state] @task-states)
@@ -297,22 +302,23 @@
            (helpers/print-line \-))
 
       ;; add or update system tray icon
-      (when (sp/select-one [:settings :add-traybar-icon] preferences)
-        (let [collected-task-states (->> task-names
-                                         (map #(vector % (get-in new-task-states [% :exit-state])))
-                                         (into {}))
-              collected-states      (vals collected-task-states)
-              icon-resource-path    (cond
-                                      (every? #{:idle} collected-states)
-                                        "moccafaux-full.png"
-                                      (some #{:idle} collected-states)
-                                        "moccafaux-medium.png"
-                                      :else
-                                        "moccafaux-empty.png")]
-          (tray/add-to-traybar collected-task-states icon-resource-path))))
+      (when (and update-traybar?
+                 (sp/select-one [:settings :add-traybar-icon] preferences))
+        (let [icon-resource-path (cond
+                                   (every? #{:idle} (vals new-exit-states))
+                                     "moccafaux-full.png"
+                                   (some #{:idle} (vals new-exit-states))
+                                     "moccafaux-medium.png"
+                                   :else
+                                     "moccafaux-empty.png")]
+          (tray/add-to-traybar new-exit-states icon-resource-path))))
+
+    ;; remember current state for next run
     (dosync
       (ref-set task-states
-               new-task-states))))
+               new-task-states)
+      (ref-set exit-states
+               new-exit-states))))
 
 
 (defn- start-scheduler
