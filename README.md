@@ -106,12 +106,14 @@ MALLOC_ARENA_MAX=4 java -jar moccafaux.jar
 ## Options
 
 **MoccaFaux** reads its settings from the file
-`$HOME/.config/moccafaux/config.edn`. As the file name suggests,
-settings are expected to be in Clojure's [EDN] format.
+`$HOME/.config/moccafaux/config.edn`. As the file extension suggests,
+settings are expected to be in Clojure's [EDN] format. You can think
+of it as an enhanced version of JSON (use `;` for comments).
 
 To get started, use a copy of `config-SAMPLE.edn` (found in the
-repository's root directory) and edit to taste. Depending on your
-system, you might also have to install some tools:
+repository's root directory) and edit to taste. For it to work, you
+have to **disable your system's own power management** and install
+some tools:
 
 ```bash
 # Debian-based systems (pgrep, xautolock and xset)
@@ -154,11 +156,12 @@ the system tray bar.
 
 #### `:probing-interval`
 
-Sets the the interval for repeating the _watch_ commands in seconds.
-I have found 60 seconds to be a good trade-off between resource usage
+Sets the interval in seconds for repeating the _watch_ commands. I
+have found 60 seconds to be a good trade-off between resource usage
 and response time. But this interval is not restricted in any way, so
-if you set it to one second, all _watches_ will be checked once per
-second. Let's just hope that your computer can keep up with this ...
+if you set it to one second (great for testing), all _watches_ will be
+checked once per second. Let's just hope that your computer can keep
+up with this ...
 
 ### Tasks
 
@@ -213,8 +216,8 @@ _Note: backslashes have to be quoted by doubling (`\\`)._
 However, some commands need to continue running in the background. In
 such a case, set `:fork` to `true`. Note that forked commands are not
 monitored, so you have to kill them manually when watch states change.
-When you exit **MoccaFaux**, forked commands are usually killed
-automatically.
+When **MoccaFaux** exits, forked commands _should_ be killed
+automatically, but this is not guaranteed.
 
 #### `:message`
 
@@ -253,7 +256,8 @@ settings where you can easily find them in the future.
 
 #### `:command`
 
-This is identical to its twin in _tasks_ except that it may not fork.
+This is identical to its twin in _tasks_ except that it must exit
+(**MoccaFaux** needs the exit code), so forking is not supported.
 
 #### `:tasks`
 
@@ -290,6 +294,6 @@ https://www.gnu.org/software/classpath/license.html.
 [coffee substitute]: https://en.wikipedia.org/wiki/Coffee_substitute
 [inotify]: https://en.wikipedia.org/wiki/Inotify
 [gulp.watch]: https://gulpjs.com/docs/en/getting-started/watching-files
-[edn]: http://edn-format.org/
+[edn]: https://learnxinyminutes.com/docs/edn/
 [martin zuther]: http://www.mzuther.de/
 [release]: https://github.com/mzuther/moccafaux/releases
