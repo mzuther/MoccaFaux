@@ -103,6 +103,14 @@ Open a shell and locate to the **MoccaFaux** directory. Then execute:
 MALLOC_ARENA_MAX=4 java -jar moccafaux.jar
 ```
 
+You will probably start **MoccaFaux** automatically or from a menu.
+When problems occur, however, run it in a shell. It prints status
+messages to `stdout` that will help you with problem fixing.
+
+By default, **MoccaFaux** adds an icon to the system tray bar. This
+icon has three states and changes depending on whether _no_, _some_ or
+_all_ of the defined tasks are `:idle`.
+
 ## Options
 
 **MoccaFaux** reads its settings from the file
