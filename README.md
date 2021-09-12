@@ -48,7 +48,19 @@ will be dropped when the computer is suspended or under extremely high
 load – so please do not use **MoccaFaux** when your main concerns are
 high reliability or repeatability._
 
-## The name
+## Motivation
+
+To be honest, controlling screensaver and power management of Linux
+desktops is quite a mess. Despite some conventions, there seems to be
+no universal standard, and applications and tools often resort to
+kludges.
+
+I wanted to keep my computer awake when syncing large files, but there
+seemed to be no solution that would survive the ravages of time. So I
+decided that disabling power management and screensaver was my best
+option and started to write **MoccaFaux**.
+
+## Name
 
 As this application was conceived as a substitue for **[caffeine]**, I
 originally called it **Muckefuck** (pronounced [ˈmʊkəfʊk]). This is a
@@ -300,8 +312,8 @@ https://www.gnu.org/software/classpath/license.html.
 
 [caffeine]: https://launchpad.net/caffeine
 [coffee substitute]: https://en.wikipedia.org/wiki/Coffee_substitute
-[inotify]: https://en.wikipedia.org/wiki/Inotify
-[gulp.watch]: https://gulpjs.com/docs/en/getting-started/watching-files
 [edn]: https://learnxinyminutes.com/docs/edn/
+[gulp.watch]: https://gulpjs.com/docs/en/getting-started/watching-files
+[inotify]: https://en.wikipedia.org/wiki/Inotify
 [martin zuther]: http://www.mzuther.de/
 [release]: https://github.com/mzuther/moccafaux/releases
