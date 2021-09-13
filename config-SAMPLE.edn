@@ -27,7 +27,7 @@
    :watches {
       :important-processes {
          :enabled true
-         :command "pgrep -af '^dpkg\\b|^pacman\\b|^dar\\s|\\bgparted\\b|^k3b\\b|^/\\S*rsync\\b|^ssh\\s|^sshd:.*\\[priv\\]|^unison\\S*|\\bgsmartcontrol\\b|^ffmpeg\\s'"
+         :command "pgrep -af '^dpkg\\b|^pacman\\b|^dar\\s|\\bgparted\\b|^k3b\\b|^/\\S*rclone\\b|^/\\S*rsync\\b|^ssh\\s|^sshd:.*\\[priv\\]|^unison\\S*|\\bgsmartcontrol\\b|^ffmpeg\\s'"
          :tasks   { :sleep true } }
 
       :audio {
