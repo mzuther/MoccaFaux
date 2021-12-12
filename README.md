@@ -107,7 +107,9 @@ Finally, copy `target/uberjar/moccafaux.jar` to a place of your liking.
 
 ## Usage
 
-Open a shell and locate to the **MoccaFaux** directory. Then execute:
+First, you have to create an [options](#options) file. When you are
+done, open a shell and locate to the **MoccaFaux** directory. Then
+execute:
 
 ```bash
 # setting MALLOC_ARENA_MAX bounds virtual memory, see
