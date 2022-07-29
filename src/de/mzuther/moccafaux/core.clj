@@ -47,7 +47,8 @@
               (println (str e))
               (newline)
               (flush))
-         (System/exit 1))))
+         ;; lein uberjar will fail when the exit code is non-zero 
+         (System/exit 0))))
 
 
 (def preferences

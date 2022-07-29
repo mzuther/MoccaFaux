@@ -1,4 +1,4 @@
-(defproject de.mzuther/moccafaux.core "1.5.0"
+(defproject de.mzuther/moccafaux.core "1.5.1"
   :description "Adapt power management to changes in the environment."
   :url "https://github.com/mzuther/moccafaux"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
