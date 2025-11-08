@@ -296,7 +296,7 @@ the _task_ to this map.
 
 ## License
 
-_Copyright (c) 2020-2021 [Martin Zuther] and contributors_
+_Copyright (c) 2020-2025 [Martin Zuther] and contributors_
 
 This program and the accompanying materials are made available under
 the terms of the Eclipse Public License 2.0 which is available at
