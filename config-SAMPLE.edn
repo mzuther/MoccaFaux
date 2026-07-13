@@ -46,6 +46,11 @@
          :tasks   { :dpms  true
                     :sleep true } }
 
+      :wipe {
+         :enabled true
+         :command "pgrep -l '^(scrub|shred|wipe)$'"
+         :tasks   { :sleep true } }
+
       :zfs-scrub {
          :enabled true
          :command "zpool status | grep -E '(resilver|scrub) in progress'"
